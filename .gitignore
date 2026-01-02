@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Database
+nexashield.db
+
+# Secrets - DO NOT PUSH
+client_secret.json
+client.json

@@ -1,0 +1,216 @@
+QMainWindow {
+    background-color: #2b2b2b;
+}
+
+/* Auth Frame Styles */
+QFrame#AuthFrame {
+    background-color: #333;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #555;
+    border-top: 2px solid #0078d7; /* Accent line at top */
+}
+
+QLineEdit {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #555;
+    background-color: #222;
+    color: white;
+    margin-bottom: 10px;
+}
+
+QLineEdit:focus {
+    border: 1px solid #0078d7;
+}
+
+/* Password Input Composite Widget */
+QFrame#PasswordFrame {
+    background-color: #222;
+    border: 1px solid #555;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+QFrame#PasswordFrame:hover {
+    border: 1px solid #777;
+}
+
+QLineEdit#PasswordLineEdit {
+    border: none;
+    background-color: transparent;
+    margin-bottom: 0;
+}
+
+QToolButton#VisibilityButton {
+    background-color: transparent;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    padding: 0 5px;
+}
+
+QToolButton#VisibilityButton:hover { color: #fff; }
+
+QPushButton {
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #0078d7;
+    color: white;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #005a9e;
+}
+
+QPushButton#GoogleButton {
+    background-color: #db4437; /* Google Red */
+    margin-top: 5px;
+}
+
+QPushButton#GoogleButton:hover {
+    background-color: #c53929;
+}
+
+QLabel {
+    color: white;
+    font-size: 14px;
+}
+
+QLabel#LogoLabel {
+    margin-bottom: 10px;
+}
+
+/* Specific Labels */
+QLabel#LoginTitle {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #0078d7;
+}
+
+QLabel#SignupTitle {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #28a745;
+}
+
+/* Specific Buttons */
+QPushButton#SignupButton {
+    background-color: #28a745;
+}
+
+QPushButton#LinkButton {
+    background-color: transparent;
+    color: #aaa;
+    border: none;
+}
+
+/* Home Window */
+QLabel#HomeHeader {
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    padding: 10px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #444;
+}
+
+QTabBar::tab {
+    background: #333;
+    color: #fff;
+    padding: 10px;
+    min-width: 100px;
+}
+
+QTabBar::tab:selected {
+    background: #555;
+    border-bottom: 2px solid #0078d7;
+}
+
+QLabel#PlaceholderLabel {
+    color: #888;
+    font-size: 18px;
+}
+
+/* MessageBox Styles */
+QMessageBox {
+    background-color: #333;
+    color: white;
+}
+
+QMessageBox QLabel {
+    color: white;
+}
+
+QMessageBox QPushButton {
+    background-color: #0078d7;
+    color: white;
+    border-radius: 5px;
+    padding: 6px 15px;
+}
+
+QMessageBox QPushButton:hover {
+    background-color: #005a9e;
+}
+
+/* Password Strength Meter */
+QProgressBar#StrengthBar {
+    border: 1px solid #555;
+    border-radius: 3px;
+    background-color: #222;
+    text-align: center;
+}
+
+/* Top Navigation Bar */
+QFrame#Navbar {
+    background-color: #202020;
+    border-bottom: 1px solid #333;
+}
+
+QLabel#NavbarTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #0078d7;
+    margin-right: 20px;
+}
+
+QPushButton#NavButton {
+    background-color: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 15px;
+    padding: 18px 15px;
+    border-bottom: 3px solid transparent;
+    border-radius: 0px;
+    font-weight: bold;
+}
+
+QPushButton#NavButton:hover {
+    color: white;
+}
+
+QPushButton#NavButton:checked {
+    color: white;
+    border-bottom: 3px solid #0078d7;
+}
+
+QPushButton#LogoutButton {
+    background-color: transparent;
+    border: none;
+    color: #dc3545;
+    font-size: 15px;
+    padding: 18px 15px;
+    border-bottom: 3px solid transparent;
+    border-radius: 0px;
+    font-weight: bold;
+}
+
+QPushButton#LogoutButton:hover {
+    color: #ff6b6b;
+    background-color: rgba(220, 53, 69, 0.1);
+}
