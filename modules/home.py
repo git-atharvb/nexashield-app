@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import (
     QLabel, QStackedWidget, QPushButton, QFrame, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from process import ProcessMonitorWidget
+from network import NetworkMonitorWidget
 
 class HomeWindow(QMainWindow):
     logout_requested = pyqtSignal()
@@ -66,8 +68,13 @@ class HomeWindow(QMainWindow):
         self.layout.addWidget(self.content_area)
 
         # Add placeholders to stack
-        for _, placeholder_text in self.modules:
-            self.content_area.addWidget(self.create_placeholder(placeholder_text))
+        for name, placeholder_text in self.modules:
+            if name == "Processes":
+                self.content_area.addWidget(ProcessMonitorWidget())
+            elif name == "Network":
+                self.content_area.addWidget(NetworkMonitorWidget())
+            else:
+                self.content_area.addWidget(self.create_placeholder(placeholder_text))
 
         # Set default selection
         self.switch_tab(0)

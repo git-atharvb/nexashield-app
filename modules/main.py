@@ -15,7 +15,7 @@ class NexaShieldApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NexaShield Cybersecurity Suite")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 900, 600)
         self.center()
 
         self.db = DatabaseManager()
