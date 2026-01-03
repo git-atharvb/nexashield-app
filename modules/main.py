@@ -15,8 +15,8 @@ class NexaShieldApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NexaShield Cybersecurity Suite")
-        self.setGeometry(100, 100, 600, 600)
         self.center()
+        self.setMinimumSize(600, 600)
 
         self.db = DatabaseManager()
 
@@ -50,10 +50,11 @@ class NexaShieldApp(QMainWindow):
         self.load_stylesheet()
 
     def center(self):
-        qr = self.frameGeometry()
-        cp = QApplication.primaryScreen().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+        w, h = 600, 600
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = screen.x() + (screen.width() - w) // 2
+        y = screen.y() + (screen.height() - h) // 2
+        self.setGeometry(x, y, w, h)
 
     def show_home(self):
         self.stack.setCurrentIndex(3)

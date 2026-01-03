@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QFrame, QHBoxLayout, QLineEdit, QToolButton
+    QWidget, QVBoxLayout, QFrame, QHBoxLayout, QLineEdit, QToolButton, QGridLayout
 )
 from PyQt6.QtCore import Qt
 
@@ -39,8 +39,7 @@ class AuthStyle(QWidget):
     """Base class for styling Login/Signup forms."""
     def __init__(self):
         super().__init__()
-        self.layout = QVBoxLayout()
-        self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout = QGridLayout()
         self.setLayout(self.layout)
 
         # Container for the form to center it
@@ -49,4 +48,4 @@ class AuthStyle(QWidget):
         self.frame.setObjectName("AuthFrame")
         self.frame_layout = QVBoxLayout()
         self.frame.setLayout(self.frame_layout)
-        self.layout.addWidget(self.frame)
+        self.layout.addWidget(self.frame, 0, 0, Qt.AlignmentFlag.AlignCenter)
