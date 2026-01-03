@@ -13,8 +13,8 @@ from PyQt6.QtWidgets import (
     QMessageBox, QFileDialog, QFrame, QGroupBox, QProgressBar,
     QAbstractItemView
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QBrush, QTextDocument, QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QRectF
+from PyQt6.QtGui import QColor, QBrush, QTextDocument, QFont, QPainter, QPen
 from PyQt6.QtPrintSupport import QPrinter
 
 # --- Constants ---
@@ -22,16 +22,9 @@ DB_NAME = "nexashield.db"
 MODEL_PATH = "phishing_model.pkl"
 VECTORIZER_PATH = "vectorizer.pkl"
 
-class PhishingScannerWorker(QThread):
-    """
-    Background thread to perform URL analysis using Hybrid detection (Heuristics + ML).
-    """
-    scan_complete = pyqtSignal(dict)
-    error_occurred = pyqtSignal(str)
-
-    def __init__(self, url):
-        super().__init__()
-        self.url = url
+class PhishingAnalyzer:
+    """Core logic for phishing detection, separated from UI threads."""
+    def __init__(self):
         self.model = None
         self.vectorizer = None
         self.ml_enabled = False
@@ -50,13 +43,13 @@ class PhishingScannerWorker(QThread):
             print(f"ML Model Load Error: {e}")
             self.ml_enabled = False
 
-    def run(self):
+    def scan(self, url):
         try:
-            if not self.url:
+            if not url:
                 raise ValueError("Empty URL")
 
             # 1. Heuristic Analysis
-            heuristic_score, reasons = self.analyze_heuristics(self.url)
+            heuristic_score, reasons = self.analyze_heuristics(url)
             
             # 2. ML Analysis (if available)
             ml_score = 0.0
@@ -65,7 +58,7 @@ class PhishingScannerWorker(QThread):
             if self.ml_enabled and self.vectorizer and self.model:
                 try:
                     # Vectorize URL
-                    features = self.vectorizer.transform([self.url])
+                    features = self.vectorizer.transform([url])
                     # Predict (Assuming class 1 is phishing)
                     prob = self.model.predict_proba(features)[0][1]
                     ml_score = prob * 100
@@ -96,10 +89,10 @@ class PhishingScannerWorker(QThread):
             else:
                 level = "High Risk"
 
-            details = self.get_url_details(self.url)
+            details = self.get_url_details(url)
 
-            result = {
-                "url": self.url,
+            return {
+                "url": url,
                 "score": final_score,
                 "level": level,
                 "method": method,
@@ -107,10 +100,9 @@ class PhishingScannerWorker(QThread):
                 "details": details,
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            self.scan_complete.emit(result)
 
         except Exception as e:
-            self.error_occurred.emit(str(e))
+            return {"error": str(e)}
 
     def get_url_details(self, url):
         details = {}
@@ -210,6 +202,99 @@ class PhishingScannerWorker(QThread):
 
         return min(score, 100), reasons
 
+class PhishingScannerWorker(QThread):
+    """Background thread for single URL scan."""
+    scan_complete = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+        self.analyzer = PhishingAnalyzer()
+
+    def run(self):
+        result = self.analyzer.scan(self.url)
+        if "error" in result:
+            self.error_occurred.emit(result["error"])
+        else:
+            self.scan_complete.emit(result)
+
+class BatchPhishingWorker(QThread):
+    """Background thread for batch URL scanning."""
+    progress = pyqtSignal(int, int) # current, total
+    result_ready = pyqtSignal(dict)
+    finished_batch = pyqtSignal()
+
+    def __init__(self, urls):
+        super().__init__()
+        self.urls = urls
+        self.analyzer = PhishingAnalyzer()
+        self.is_running = True
+
+    def stop(self):
+        self.is_running = False
+
+    def run(self):
+        total = len(self.urls)
+        for i, url in enumerate(self.urls):
+            if not self.is_running: break
+            
+            url = url.strip()
+            if url:
+                result = self.analyzer.scan(url)
+                if "error" not in result:
+                    self.result_ready.emit(result)
+            
+            self.progress.emit(i + 1, total)
+        
+        self.finished_batch.emit()
+
+class PhishingStatsChart(QWidget):
+    """Pie chart to visualize threat distribution."""
+    def __init__(self):
+        super().__init__()
+        self.setMinimumSize(150, 150)
+        self.stats = {"Safe": 0, "Low Risk": 0, "Medium Risk": 0, "High Risk": 0}
+
+    def update_stats(self, stats):
+        self.stats = stats
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        w = self.width()
+        h = self.height()
+        
+        # Background
+        painter.fillRect(0, 0, w, h, QColor("#2b2b2b"))
+        
+        total = sum(self.stats.values())
+        if total == 0:
+            return
+
+        # Colors
+        colors = {
+            "Safe": "#28a745",
+            "Low Risk": "#17a2b8",
+            "Medium Risk": "#ffc107",
+            "High Risk": "#dc3545"
+        }
+
+        # Draw Pie
+        size = min(w, h) - 20
+        rect = QRectF((w - size) / 2, 10, size, size)
+        start_angle = 90 * 16
+        
+        for label, count in self.stats.items():
+            if count > 0:
+                span = int((count / total) * 360 * 16)
+                painter.setBrush(QColor(colors.get(label, "#888")))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawPie(rect, start_angle, span)
+                start_angle += span
+
 class PhishingDetectorWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -265,6 +350,10 @@ class PhishingDetectorWidget(QWidget):
         self.btn_scan.clicked.connect(self.start_scan)
         input_layout.addWidget(self.btn_scan)
         
+        self.btn_batch = QPushButton("Import Batch")
+        self.btn_batch.clicked.connect(self.import_batch)
+        input_layout.addWidget(self.btn_batch)
+
         layout.addWidget(input_group)
 
         # --- Result Section ---
@@ -316,10 +405,19 @@ class PhishingDetectorWidget(QWidget):
 
         # --- History Section ---
         hist_group = QGroupBox("Scan History")
-        hist_layout = QVBoxLayout(hist_group)
+        hist_main_layout = QHBoxLayout(hist_group)
+
+        # Left: Table & Controls
+        hist_left_widget = QWidget()
+        hist_layout = QVBoxLayout(hist_left_widget)
+        hist_layout.setContentsMargins(0, 0, 0, 0)
 
         # Controls
         hist_controls = QHBoxLayout()
+        self.progress_bar = QProgressBar()
+        self.progress_bar.hide()
+        hist_controls.addWidget(self.progress_bar)
+
         self.btn_export = QPushButton("Export History")
         self.btn_export.clicked.connect(self.export_history)
         hist_controls.addWidget(self.btn_export)
@@ -341,7 +439,14 @@ class PhishingDetectorWidget(QWidget):
         self.table.verticalHeader().setVisible(False)
         
         hist_layout.addWidget(self.table)
-        layout.addWidget(hist_group)
+        
+        hist_main_layout.addWidget(hist_left_widget, 3)
+
+        # Right: Statistics Chart
+        self.stats_chart = PhishingStatsChart()
+        hist_main_layout.addWidget(self.stats_chart, 1)
+
+        layout.addWidget(hist_group, 1) # Give history more space
 
         # Load initial history
         self.load_history()
@@ -377,6 +482,38 @@ class PhishingDetectorWidget(QWidget):
         self.btn_scan.setEnabled(True)
         self.btn_scan.setText("Scan URL")
         QMessageBox.critical(self, "Scan Error", f"An error occurred: {error_msg}")
+
+    def import_batch(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import URLs", "", "Text Files (*.txt)")
+        if not path:
+            return
+
+        try:
+            with open(path, 'r') as f:
+                urls = [line.strip() for line in f if line.strip()]
+            
+            if not urls:
+                QMessageBox.warning(self, "Empty File", "No URLs found in file.")
+                return
+
+            self.progress_bar.show()
+            self.progress_bar.setValue(0)
+            self.btn_batch.setEnabled(False)
+            
+            self.batch_worker = BatchPhishingWorker(urls)
+            self.batch_worker.progress.connect(lambda c, t: self.progress_bar.setValue(int((c/t)*100)))
+            self.batch_worker.result_ready.connect(self.save_result) # Save silently
+            self.batch_worker.finished_batch.connect(self.on_batch_complete)
+            self.batch_worker.start()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Import Error", str(e))
+
+    def on_batch_complete(self):
+        self.btn_batch.setEnabled(True)
+        self.progress_bar.hide()
+        self.load_history()
+        QMessageBox.information(self, "Batch Complete", "Batch scan finished successfully.")
 
     def display_result(self, result):
         self.result_frame.show()
@@ -432,6 +569,8 @@ class PhishingDetectorWidget(QWidget):
             cursor.execute("SELECT timestamp, url, threat_level, score FROM phishing_history ORDER BY id DESC")
             rows = cursor.fetchall()
             
+            stats = {"Safe": 0, "Low Risk": 0, "Medium Risk": 0, "High Risk": 0}
+            
             self.table.setRowCount(len(rows))
             for i, row in enumerate(rows):
                 self.table.setItem(i, 0, QTableWidgetItem(row[0]))
@@ -439,12 +578,23 @@ class PhishingDetectorWidget(QWidget):
                 
                 level_item = QTableWidgetItem(row[2])
                 if "High" in row[2]:
+                    stats["High Risk"] += 1
                     level_item.setForeground(QBrush(QColor("#dc3545")))
+                elif "Medium" in row[2]:
+                    stats["Medium Risk"] += 1
+                    level_item.setForeground(QBrush(QColor("#ffc107")))
+                elif "Low" in row[2]:
+                    stats["Low Risk"] += 1
+                    level_item.setForeground(QBrush(QColor("#17a2b8")))
                 elif "Safe" in row[2]:
+                    stats["Safe"] += 1
                     level_item.setForeground(QBrush(QColor("#28a745")))
                 self.table.setItem(i, 2, level_item)
                 
                 self.table.setItem(i, 3, QTableWidgetItem(f"{row[3]:.1f}"))
+            
+            self.stats_chart.update_stats(stats)
+            
         except sqlite3.Error:
             pass
 
