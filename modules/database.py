@@ -1,5 +1,6 @@
 import sqlite3
 import hashlib
+import datetime
 
 class DatabaseManager:
     def __init__(self, db_name="nexashield.db"):
@@ -17,6 +18,31 @@ class DatabaseManager:
                 address TEXT
             )
         """)
+        
+        # Antivirus Tables
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scan_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_type TEXT,
+                files_scanned INTEGER,
+                threats_found INTEGER,
+                timestamp TEXT
+            )
+        """)
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS signatures (
+                hash TEXT PRIMARY KEY,
+                name TEXT,
+                type TEXT,
+                severity TEXT
+            )
+        """)
+        
+        # Seed EICAR Test Signature (Standard Anti-Malware Test File)
+        eicar_hash = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+        self.cursor.execute("INSERT OR IGNORE INTO signatures VALUES (?, ?, ?, ?)", 
+                            (eicar_hash, "EICAR-Test-File", "Virus", "High"))
+
         # Migration: Add columns if they don't exist (for existing databases)
         try:
             self.cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT")
@@ -54,3 +80,19 @@ class DatabaseManager:
         self.cursor.execute("UPDATE users SET password=? WHERE username=?", (hashed_pw, username))
         self.conn.commit()
         return True
+
+    def add_scan_history(self, scan_type, files_scanned, threats_found):
+        """Log a completed scan."""
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO scan_history (scan_type, files_scanned, threats_found, timestamp) VALUES (?, ?, ?, ?)",
+                            (scan_type, files_scanned, threats_found, timestamp))
+        self.conn.commit()
+
+    def get_scan_history(self):
+        self.cursor.execute("SELECT * FROM scan_history ORDER BY id DESC")
+        return self.cursor.fetchall()
+
+    def check_signature(self, file_hash):
+        """Check if a file hash exists in the signature database."""
+        self.cursor.execute("SELECT name, type, severity FROM signatures WHERE hash=?", (file_hash,))
+        return self.cursor.fetchone()
