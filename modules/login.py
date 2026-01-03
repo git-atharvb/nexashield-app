@@ -146,10 +146,43 @@ class LoginSuccessDialog(QDialog):
         self.fade_in.start()
         QTimer.singleShot(1500, self.fade_out.start)
 
+class LoadingSpinner(QWidget):
+    """A simple rotating spinner widget."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(40, 40)
+        self.angle = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.rotate)
+        self.hide()
+
+    def rotate(self):
+        self.angle = (self.angle + 45) % 360
+        self.update()
+
+    def showEvent(self, event):
+        self.timer.start(80)
+        super().showEvent(event)
+
+    def hideEvent(self, event):
+        self.timer.stop()
+        super().hideEvent(event)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.translate(self.width() / 2, self.height() / 2)
+        painter.rotate(self.angle)
+        
+        pen = QPen(QColor("#0078d7"), 3)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.drawArc(-12, -12, 24, 24, 0, 270 * 16)
+
 class LoginWindow(AuthStyle):
     switch_to_signup = pyqtSignal()
     switch_to_forgot = pyqtSignal()
-    login_success = pyqtSignal()
+    login_success = pyqtSignal(str)
 
     def __init__(self, db):
         super().__init__()
@@ -177,6 +210,10 @@ class LoginWindow(AuthStyle):
         self.login_btn.clicked.connect(self.handle_login)
         self.frame_layout.addWidget(self.login_btn)
 
+        # Spinner (Hidden by default)
+        self.spinner = LoadingSpinner()
+        self.frame_layout.addWidget(self.spinner, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.google_btn = QPushButton("Sign in with Google")
         self.google_btn.setObjectName("GoogleButton")
         self.google_btn.clicked.connect(self.handle_google_login)
@@ -193,13 +230,25 @@ class LoginWindow(AuthStyle):
         self.frame_layout.addWidget(self.signup_link)
 
     def handle_login(self):
+        self.login_btn.setEnabled(False)
+        self.login_btn.setText("Verifying...")
+        self.spinner.show()
+        
+        # Simulate processing delay for animation
+        QTimer.singleShot(1500, self.perform_login)
+
+    def perform_login(self):
         username = self.username_input.text()
         password = self.password_input.text()
+
+        self.spinner.hide()
+        self.login_btn.setEnabled(True)
+        self.login_btn.setText("Login")
 
         if self.db.verify_user(username, password):
             dlg = LoginSuccessDialog(self, username)
             dlg.exec()
-            self.login_success.emit()
+            self.login_success.emit(username)
         else:
             QMessageBox.warning(self, "Error", "Invalid username or password")
 
@@ -254,7 +303,7 @@ class LoginWindow(AuthStyle):
         # Here you could register the user in your DB if they don't exist
         dlg = LoginSuccessDialog(self, email)
         dlg.exec()
-        self.login_success.emit()
+        self.login_success.emit(email)
         self.login_btn.setEnabled(True)
         self.google_btn.setText("Sign in with Google")
 

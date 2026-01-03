@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QFrame, QHBoxLayout, QLineEdit, QToolButton, QGridLayout
+    QWidget, QVBoxLayout, QFrame, QHBoxLayout, QLineEdit, QToolButton, QGridLayout, QPushButton
 )
 from PyQt6.QtCore import Qt
 
@@ -39,8 +39,20 @@ class AuthStyle(QWidget):
     """Base class for styling Login/Signup forms."""
     def __init__(self):
         super().__init__()
-        self.layout = QGridLayout()
+        self.layout = QVBoxLayout()
         self.setLayout(self.layout)
+
+        # Top Bar for Theme Toggle
+        top_bar = QHBoxLayout()
+        top_bar.addStretch()
+        self.theme_toggle = QPushButton("☀️")
+        self.theme_toggle.setFixedSize(40, 40)
+        self.theme_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.theme_toggle.setObjectName("ThemeToggle")
+        top_bar.addWidget(self.theme_toggle)
+        self.layout.addLayout(top_bar)
+
+        self.layout.addStretch()
 
         # Container for the form to center it
         self.frame = QFrame()
@@ -48,4 +60,6 @@ class AuthStyle(QWidget):
         self.frame.setObjectName("AuthFrame")
         self.frame_layout = QVBoxLayout()
         self.frame.setLayout(self.frame_layout)
-        self.layout.addWidget(self.frame, 0, 0, Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.frame, 0, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addStretch()

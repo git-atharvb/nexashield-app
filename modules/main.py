@@ -3,6 +3,7 @@ import os
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
+from PyQt6.QtGui import QIcon
 from database import DatabaseManager
 from login import LoginWindow
 from signup import SignupWindow
@@ -14,7 +15,13 @@ from home import HomeWindow
 class NexaShieldApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.is_dark_mode = True
         self.setWindowTitle("NexaShield Cybersecurity Suite")
+        
+        # Set Window Icon
+        icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
+        self.setWindowIcon(QIcon(icon_path))
+
         self.center()
         self.setMinimumSize(600, 600)
 
@@ -47,6 +54,12 @@ class NexaShieldApp(QMainWindow):
         self.forgot_screen.switch_to_login.connect(lambda: self.stack.setCurrentIndex(0))
         self.home_screen.logout_requested.connect(self.handle_logout)
 
+        # Theme Toggles
+        self.login_screen.theme_toggle.clicked.connect(self.toggle_theme)
+        self.signup_screen.theme_toggle.clicked.connect(self.toggle_theme)
+        self.forgot_screen.theme_toggle.clicked.connect(self.toggle_theme)
+        self.home_screen.theme_toggle.clicked.connect(self.toggle_theme)
+
         self.load_stylesheet()
 
     def center(self):
@@ -56,22 +69,48 @@ class NexaShieldApp(QMainWindow):
         y = screen.y() + (screen.height() - h) // 2
         self.setGeometry(x, y, w, h)
 
-    def show_home(self):
+    def show_home(self, username):
+        self.setWindowTitle(f"NexaShield Cybersecurity Suite : Welcome {username}")
         self.stack.setCurrentIndex(3)
         self.showMaximized()
 
     def handle_logout(self):
+        self.setWindowTitle("NexaShield Cybersecurity Suite")
         self.login_screen.clear_inputs()
         self.stack.setCurrentIndex(0)
         self.showNormal()
         self.resize(600, 600)
         self.center()
 
+    def toggle_theme(self):
+        self.is_dark_mode = not self.is_dark_mode
+        icon = "☀️" if self.is_dark_mode else "🌙"
+        
+        # Update icons on all screens
+        self.login_screen.theme_toggle.setText(icon)
+        self.signup_screen.theme_toggle.setText(icon)
+        self.forgot_screen.theme_toggle.setText(icon)
+        self.home_screen.theme_toggle.setText(icon)
+        
+        self.load_stylesheet()
+
     def load_stylesheet(self):
         style_path = os.path.join(os.path.dirname(__file__), "style.qss")
         if os.path.exists(style_path):
             with open(style_path, "r") as f:
-                self.setStyleSheet(f.read())
+                qss = f.read()
+                
+                if not self.is_dark_mode:
+                    # Dynamic Light Mode Patching
+                    qss = qss.replace("#2b2b2b", "#f5f5f5")  # Main BG
+                    qss = qss.replace("#333", "#ffffff")     # Panels/Frames
+                    qss = qss.replace("#222", "#e8e8e8")     # Inputs
+                    qss = qss.replace("#202020", "#e0e0e0")  # Navbar
+                    qss = qss.replace("color: white;", "color: #333;")
+                    qss = qss.replace("color: #fff;", "color: #333;")
+                    qss = qss.replace("color: #aaa;", "color: #555;")
+
+                self.setStyleSheet(qss)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

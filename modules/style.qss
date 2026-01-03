@@ -214,3 +214,14 @@ QPushButton#LogoutButton:hover {
     color: #ff6b6b;
     background-color: rgba(220, 53, 69, 0.1);
 }
+
+/* Theme Toggle Button */
+QPushButton#ThemeToggle {
+    background-color: transparent;
+    border: none;
+    font-size: 20px;
+    border-radius: 20px;
+}
+QPushButton#ThemeToggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

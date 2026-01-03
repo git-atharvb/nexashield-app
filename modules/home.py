@@ -193,6 +193,13 @@ class HomeWindow(QMainWindow):
             nav_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
+        # Theme Toggle
+        self.theme_toggle = QPushButton("☀️")
+        self.theme_toggle.setFixedSize(40, 40)
+        self.theme_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.theme_toggle.setObjectName("ThemeToggle")
+        nav_layout.addWidget(self.theme_toggle)
+
         # Logout Button
         logout_btn = QPushButton("Logout")
         logout_btn.setObjectName("LogoutButton")
