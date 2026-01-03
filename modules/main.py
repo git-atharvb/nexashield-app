@@ -15,7 +15,7 @@ class NexaShieldApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NexaShield Cybersecurity Suite")
-        self.setGeometry(100, 100, 900, 600)
+        self.setGeometry(100, 100, 600, 600)
         self.center()
 
         self.db = DatabaseManager()
@@ -62,6 +62,9 @@ class NexaShieldApp(QMainWindow):
     def handle_logout(self):
         self.login_screen.clear_inputs()
         self.stack.setCurrentIndex(0)
+        self.showNormal()
+        self.resize(600, 600)
+        self.center()
 
     def load_stylesheet(self):
         style_path = os.path.join(os.path.dirname(__file__), "style.qss")

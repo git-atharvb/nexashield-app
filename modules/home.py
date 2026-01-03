@@ -8,6 +8,10 @@ from tabs.network import NetworkMonitorWidget
 from tabs.siem import SIEMDashboard
 from tabs.phishing_detector import PhishingDetectorWidget
 from tabs.antivirus import AntivirusWidget
+from tabs.memory import MemoryMonitorWidget
+from tabs.cloud import CloudSecurityWidget
+from tabs.settings import SettingsWidget
+from tabs.about import AboutWidget
 
 class LogoutSuccessDialog(QDialog):
     """A custom, modern dialog for successful logout."""
@@ -170,10 +174,14 @@ class HomeWindow(QMainWindow):
             ("SIEM", "SIEM Dashboard"),
             ("Processes", "Process Management"),
             ("Network", "Network Management"),
+            ("Memory", "Memory Analysis"),
             ("Phishing", "Phishing Detector"),
             ("IDS/IPS", "IDS / IPS"),
             ("Firewall", "Firewall Control"),
-            ("Antivirus", "Antivirus Scanner")
+            ("Antivirus", "Antivirus Scanner"),
+            ("Cloud", "Cloud Security"),
+            ("Settings", "Settings"),
+            ("About", "About")
         ]
 
         for i, (btn_text, _) in enumerate(self.modules):
@@ -207,8 +215,16 @@ class HomeWindow(QMainWindow):
                 self.content_area.addWidget(NetworkMonitorWidget())
             elif name == "Phishing":
                 self.content_area.addWidget(PhishingDetectorWidget())
+            elif name == "Memory":
+                self.content_area.addWidget(MemoryMonitorWidget())
             elif name == "Antivirus":
                 self.content_area.addWidget(AntivirusWidget())
+            elif name == "Cloud":
+                self.content_area.addWidget(CloudSecurityWidget())
+            elif name == "Settings":
+                self.content_area.addWidget(SettingsWidget())
+            elif name == "About":
+                self.content_area.addWidget(AboutWidget())
             else:
                 self.content_area.addWidget(self.create_placeholder(placeholder_text))
 
