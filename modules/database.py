@@ -96,3 +96,8 @@ class DatabaseManager:
         """Check if a file hash exists in the signature database."""
         self.cursor.execute("SELECT name, type, severity FROM signatures WHERE hash=?", (file_hash,))
         return self.cursor.fetchone()
+
+    def clear_scan_history(self):
+        """Clear all scan history."""
+        self.cursor.execute("DELETE FROM scan_history")
+        self.conn.commit()

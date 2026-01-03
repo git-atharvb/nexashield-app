@@ -3,11 +3,11 @@ from PyQt6.QtWidgets import (
     QLabel, QStackedWidget, QPushButton, QFrame, QMessageBox, QDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QTimer
-from process import ProcessMonitorWidget
-from network import NetworkMonitorWidget
-from siem import SIEMDashboard
-from phishing_detector import PhishingDetectorWidget
-from antivirus import AntivirusWidget
+from tabs.process import ProcessMonitorWidget
+from tabs.network import NetworkMonitorWidget
+from tabs.siem import SIEMDashboard
+from tabs.phishing_detector import PhishingDetectorWidget
+from tabs.antivirus import AntivirusWidget
 
 class LogoutSuccessDialog(QDialog):
     """A custom, modern dialog for successful logout."""
