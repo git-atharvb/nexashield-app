@@ -280,18 +280,32 @@ class NetworkMonitorWidget(QWidget):
         info_panel.setStyleSheet("background-color: #2b2b2b; border-radius: 5px;")
         info_layout = QVBoxLayout(info_panel)
         
-        lbl_title = QLabel("Interface Details")
-        lbl_title.setStyleSheet("color: #aaa; font-weight: bold;")
-        info_layout.addWidget(lbl_title)
+        self.lbl_interface_name = QLabel("Interface: -")
+        self.lbl_interface_name.setStyleSheet("color: #aaa; font-weight: bold;")
+        info_layout.addWidget(self.lbl_interface_name)
         
+        self.lbl_hostname = QLabel(f"Host: {socket.gethostname()}")
+        self.lbl_hostname.setStyleSheet("color: white; font-weight: bold; margin-bottom: 5px;")
+        info_layout.addWidget(self.lbl_hostname)
+
         self.lbl_ip = QLabel("IP: -")
+        self.lbl_mac = QLabel("MAC: -")
+        self.lbl_netmask = QLabel("Mask: -")
+        self.lbl_broadcast = QLabel("Broadcast: -")
         self.lbl_sent = QLabel("Sent: -")
         self.lbl_recv = QLabel("Recv: -")
+        
         self.lbl_ip.setStyleSheet("color: white; font-size: 11pt;")
+        self.lbl_mac.setStyleSheet("color: #ccc; font-size: 9pt;")
+        self.lbl_netmask.setStyleSheet("color: #ccc; font-size: 9pt;")
+        self.lbl_broadcast.setStyleSheet("color: #ccc; font-size: 9pt;")
         self.lbl_sent.setStyleSheet("color: #28a745;")
         self.lbl_recv.setStyleSheet("color: #0078d7;")
         
         info_layout.addWidget(self.lbl_ip)
+        info_layout.addWidget(self.lbl_mac)
+        info_layout.addWidget(self.lbl_netmask)
+        info_layout.addWidget(self.lbl_broadcast)
         info_layout.addWidget(self.lbl_sent)
         info_layout.addWidget(self.lbl_recv)
         info_layout.addStretch()
@@ -372,12 +386,19 @@ class NetworkMonitorWidget(QWidget):
             self.combo_interface.setCurrentText(current_selection)
 
         for row, (nic, addrs) in enumerate(if_addrs.items()):
-            # Get IP
+            # Get IP, MAC, Netmask, Broadcast
             ip_addr = "-"
+            mac_addr = "-"
+            netmask = "-"
+            broadcast = "-"
+
             for addr in addrs:
                 if addr.family == socket.AF_INET:
                     ip_addr = addr.address
-                    break
+                    netmask = addr.netmask if addr.netmask else "-"
+                    broadcast = addr.broadcast if addr.broadcast else "-"
+                elif addr.family == psutil.AF_LINK:
+                    mac_addr = addr.address
             
             # Get Stats
             sent = 0
@@ -397,14 +418,12 @@ class NetworkMonitorWidget(QWidget):
                     down_speed = (recv - prev_stats.bytes_recv) / time_delta
 
             # Update Dashboard if this is the selected interface (or first one if All)
-            if self.interface_filter == "All" and row == 0:
+            if (self.interface_filter == "All" and row == 0) or (self.interface_filter == nic):
+                self.lbl_interface_name.setText(f"Interface: {nic}")
                 self.lbl_ip.setText(f"IP: {ip_addr}")
-                self.lbl_sent.setText(f"Sent: {self.format_bytes(sent)}")
-                self.lbl_recv.setText(f"Recv: {self.format_bytes(recv)}")
-                self.chart_up.update_value(up_speed)
-                self.chart_down.update_value(down_speed)
-            elif self.interface_filter == nic:
-                self.lbl_ip.setText(f"IP: {ip_addr}")
+                self.lbl_mac.setText(f"MAC: {mac_addr}")
+                self.lbl_netmask.setText(f"Mask: {netmask}")
+                self.lbl_broadcast.setText(f"Broadcast: {broadcast}")
                 self.lbl_sent.setText(f"Sent: {self.format_bytes(sent)}")
                 self.lbl_recv.setText(f"Recv: {self.format_bytes(recv)}")
                 self.chart_up.update_value(up_speed)

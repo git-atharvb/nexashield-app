@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from process import ProcessMonitorWidget
 from network import NetworkMonitorWidget
+from siem import SIEMDashboard
+from phishing_detector import PhishingDetectorWidget
 
 class HomeWindow(QMainWindow):
     logout_requested = pyqtSignal()
@@ -38,6 +40,7 @@ class HomeWindow(QMainWindow):
         # Navigation Buttons
         self.nav_buttons = []
         self.modules = [
+            ("SIEM", "SIEM Dashboard"),
             ("Processes", "Process Management"),
             ("Network", "Network Management"),
             ("Phishing", "Phishing Detector"),
@@ -69,10 +72,14 @@ class HomeWindow(QMainWindow):
 
         # Add placeholders to stack
         for name, placeholder_text in self.modules:
-            if name == "Processes":
+            if name == "SIEM":
+                self.content_area.addWidget(SIEMDashboard())
+            elif name == "Processes":
                 self.content_area.addWidget(ProcessMonitorWidget())
             elif name == "Network":
                 self.content_area.addWidget(NetworkMonitorWidget())
+            elif name == "Phishing":
+                self.content_area.addWidget(PhishingDetectorWidget())
             else:
                 self.content_area.addWidget(self.create_placeholder(placeholder_text))
 
