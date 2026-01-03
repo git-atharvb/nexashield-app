@@ -12,65 +12,76 @@ class NexaLogo(QWidget):
     """Custom painted logo for NexaShield."""
     def __init__(self):
         super().__init__()
-        self.setFixedSize(120, 105)
+        self.setFixedSize(120, 120)
+        
+        # Animation state
+        self.node_alpha = 150
+        self.alpha_step = 4
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.animate_nodes)
+        self.timer.start(50)
+
+    def animate_nodes(self):
+        self.node_alpha += self.alpha_step
+        if self.node_alpha >= 200:
+            self.node_alpha = 200
+            self.alpha_step = -4
+        elif self.node_alpha <= 60:
+            self.node_alpha = 60
+            self.alpha_step = 4
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Scale drawing to fit new size (Original design was 160px wide)
+        # Scale drawing to fit new size (Base canvas 160x160)
         scale = self.width() / 160.0
         painter.scale(scale, scale)
-        w = 160
         
+        # --- Draw Shield ---
+        path = QPainterPath()
+        path.moveTo(30, 30)
+        path.lineTo(130, 30)
+        # Curve down to bottom point (80, 150)
+        path.cubicTo(130, 30, 130, 110, 80, 150)
+        path.cubicTo(30, 110, 30, 30, 30, 30)
+        
+        gradient = QLinearGradient(80, 30, 80, 150)
+        gradient.setColorAt(0, QColor("#0078d7"))  # Nexa Blue
+        gradient.setColorAt(1, QColor("#004a80"))  # Darker Blue
+        
+        painter.setPen(QPen(QColor("#003355"), 2))
+        painter.setBrush(gradient)
+        painter.drawPath(path)
+        
+        # --- Draw Circuit Lines (Decoration) ---
+        painter.setPen(QPen(QColor(255, 255, 255, 50), 2)) # Semi-transparent white
+        painter.drawLine(80, 150, 80, 110)
+        painter.drawLine(80, 110, 50, 90)
+        painter.drawLine(80, 110, 110, 90)
+        
+        painter.setBrush(QColor(255, 255, 255, self.node_alpha))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(77, 107, 6, 6) # Center node
+        painter.drawEllipse(47, 87, 6, 6)  # Left node
+        painter.drawEllipse(107, 87, 6, 6) # Right node
+
         # --- Draw Lock ---
         # Shackle
-        painter.setPen(QPen(QColor("#cccccc"), 8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setPen(QPen(QColor("#eeeeee"), 6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawArc(60, 45, 40, 40, 0, 180 * 16)
         
-        shackle_w = 40
-        shackle_x = int(w/2 - shackle_w/2)
-        shackle_y = 10
-        
-        # Draw arc (x, y, w, h, startAngle, spanAngle)
-        painter.drawArc(shackle_x, shackle_y, shackle_w, shackle_w, 0, 180 * 16)
-        
-        # Legs
-        leg_top = int(shackle_y + shackle_w/2)
-        leg_bottom = 50
-        painter.drawLine(shackle_x, leg_top, shackle_x, leg_bottom)
-        painter.drawLine(shackle_x + shackle_w, leg_top, shackle_x + shackle_w, leg_bottom)
-
-        # Body
-        body_w = 70
-        body_h = 55
-        body_x = int(w/2 - body_w/2)
-        body_y = 45
-        
-        gradient = QLinearGradient(0, body_y, 0, body_y + body_h)
-        gradient.setColorAt(0, QColor("#0078d7"))  # Nexa Blue
-        gradient.setColorAt(1, QColor("#005a9e"))  # Darker Blue
-
+        # Lock Body
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(gradient)
-        painter.drawRoundedRect(body_x, body_y, body_w, body_h, 8, 8)
+        painter.setBrush(QColor("white"))
+        painter.drawRoundedRect(55, 65, 50, 40, 6, 6)
         
         # Keyhole
-        painter.setBrush(QColor("white"))
-        cx = int(w/2)
-        cy = int(body_y + body_h/2)
-        painter.drawEllipse(cx - 4, cy - 8, 8, 8)
-        painter.drawRoundedRect(cx - 2, cy, 4, 12, 2, 2)
-
-        # --- Draw Text ---
-        painter.setPen(QPen(QColor("white")))
-        font = painter.font()
-        font.setBold(True)
-        font.setPointSize(10)
-        font.setFamily("Arial")
-        painter.setFont(font)
-        
-        painter.drawText(0, body_y + body_h + 5, w, 30, Qt.AlignmentFlag.AlignCenter, "NextGen Security Shield")
+        painter.setBrush(QColor("#005a9e"))
+        painter.drawEllipse(76, 80, 8, 8)
+        painter.drawRoundedRect(78, 80, 4, 15, 2, 2)
 
 class LoginSuccessDialog(QDialog):
     """A custom, modern dialog for successful login."""
