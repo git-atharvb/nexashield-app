@@ -76,69 +76,6 @@ class LogoutSuccessDialog(QDialog):
         self.fade_in.start()
         QTimer.singleShot(1500, self.fade_out.start)
 
-class LogoutSuccessDialog(QDialog):
-    """A custom, modern dialog for successful logout."""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(300, 180)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-
-        container = QFrame()
-        container.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e1e;
-                border: 1px solid #333;
-                border-radius: 15px;
-            }
-        """)
-        container_layout = QVBoxLayout(container)
-        container_layout.setSpacing(10)
-        container_layout.setContentsMargins(20, 20, 20, 20)
-
-        # Icon
-        icon = QLabel("👋")
-        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setStyleSheet("color: #0078d7; font-size: 48px; font-weight: bold; border: none;")
-        
-        # Text
-        lbl_title = QLabel("Logged Out")
-        lbl_title.setStyleSheet("color: white; font-size: 18px; font-weight: bold; border: none;")
-        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        lbl_msg = QLabel("Thank you for using\nNexaShield")
-        lbl_msg.setStyleSheet("color: #aaaaaa; font-size: 14px; border: none;")
-        lbl_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        container_layout.addWidget(icon)
-        container_layout.addWidget(lbl_title)
-        container_layout.addWidget(lbl_msg)
-        
-        layout.addWidget(container)
-
-        # Animation Setup
-        self.setWindowOpacity(0.0)
-        
-        self.fade_in = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_in.setDuration(500)
-        self.fade_in.setStartValue(0.0)
-        self.fade_in.setEndValue(1.0)
-        self.fade_in.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        
-        self.fade_out = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_out.setDuration(500)
-        self.fade_out.setStartValue(1.0)
-        self.fade_out.setEndValue(0.0)
-        self.fade_out.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self.fade_out.finished.connect(self.accept)
-
-        # Sequence: Fade In -> Wait -> Fade Out
-        self.fade_in.start()
-        QTimer.singleShot(1500, self.fade_out.start)
-
 class HomeWindow(QMainWindow):
     logout_requested = pyqtSignal()
 
