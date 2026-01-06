@@ -10,8 +10,6 @@ from tabs.phishing_detector import PhishingDetectorWidget
 from tabs.antivirus import AntivirusWidget
 from tabs.memory import MemoryMonitorWidget
 from tabs.cloud import CloudSecurityWidget
-from tabs.settings import SettingsWidget
-from tabs.about import AboutWidget
 
 class LogoutSuccessDialog(QDialog):
     """A custom, modern dialog for successful logout."""
@@ -108,17 +106,15 @@ class HomeWindow(QMainWindow):
         # Navigation Buttons
         self.nav_buttons = []
         self.modules = [
-            ("SIEM", "SIEM Dashboard"),
-            ("Processes", "Process Management"),
-            ("Network", "Network Management"),
-            ("Memory", "Memory Analysis"),
-            ("Phishing", "Phishing Detector"),
-            ("IDS/IPS", "IDS / IPS"),
-            ("Firewall", "Firewall Control"),
-            ("Antivirus", "Antivirus Scanner"),
-            ("Cloud", "Cloud Security"),
-            ("Settings", "Settings"),
-            ("About", "About")
+            ("📊 SIEM", "SIEM Dashboard"),
+            ("⚡ Processes", "Process Management"),
+            ("🌐 Network", "Network Management"),
+            ("🧠 Memory", "Memory Analysis"),
+            ("🎣 Phishing", "Phishing Detector"),
+            ("🚨 IDS/IPS", "IDS / IPS"),
+            ("🔥 Firewall", "Firewall Control"),
+            ("🛡️ Antivirus", "Antivirus Scanner"),
+            ("☁️ Cloud", "Cloud Security")
         ]
 
         for i, (btn_text, _) in enumerate(self.modules):
@@ -151,24 +147,20 @@ class HomeWindow(QMainWindow):
 
         # Add placeholders to stack
         for name, placeholder_text in self.modules:
-            if name == "SIEM":
+            if "SIEM" in name:
                 self.content_area.addWidget(SIEMDashboard())
-            elif name == "Processes":
+            elif "Processes" in name:
                 self.content_area.addWidget(ProcessMonitorWidget())
-            elif name == "Network":
+            elif "Network" in name:
                 self.content_area.addWidget(NetworkMonitorWidget())
-            elif name == "Phishing":
+            elif "Phishing" in name:
                 self.content_area.addWidget(PhishingDetectorWidget())
-            elif name == "Memory":
+            elif "Memory" in name:
                 self.content_area.addWidget(MemoryMonitorWidget())
-            elif name == "Antivirus":
+            elif "Antivirus" in name:
                 self.content_area.addWidget(AntivirusWidget())
-            elif name == "Cloud":
+            elif "Cloud" in name:
                 self.content_area.addWidget(CloudSecurityWidget())
-            elif name == "Settings":
-                self.content_area.addWidget(SettingsWidget())
-            elif name == "About":
-                self.content_area.addWidget(AboutWidget())
             else:
                 self.content_area.addWidget(self.create_placeholder(placeholder_text))
 

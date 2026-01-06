@@ -49,12 +49,12 @@ class SignupWindow(AuthStyle):
         self.strength_label.setStyleSheet("font-size: 10px; color: #888; margin-bottom: 10px;")
         self.frame_layout.addWidget(self.strength_label)
 
-        self.signup_btn = QPushButton("Sign Up")
+        self.signup_btn = QPushButton("✅ Sign Up")
         self.signup_btn.setObjectName("SignupButton")
         self.signup_btn.clicked.connect(self.handle_signup)
         self.frame_layout.addWidget(self.signup_btn)
 
-        self.login_link = QPushButton("Back to Login")
+        self.login_link = QPushButton("⬅️ Back to Login")
         self.login_link.setObjectName("LinkButton")
         self.login_link.clicked.connect(self.switch_to_login.emit)
         self.frame_layout.addWidget(self.login_link)

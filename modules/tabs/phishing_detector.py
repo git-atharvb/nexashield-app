@@ -337,20 +337,20 @@ class PhishingDetectorWidget(QWidget):
         layout.setSpacing(15)
 
         # --- Input Section ---
-        input_group = QGroupBox("URL Scanner")
+        input_group = QGroupBox("🔍 URL Scanner")
         input_layout = QHBoxLayout(input_group)
         
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("Enter URL to scan (e.g., http://example.com)...")
+        self.url_input.setPlaceholderText("🌐 Enter URL to scan (e.g., http://example.com)...")
         self.url_input.setClearButtonEnabled(True)
         input_layout.addWidget(self.url_input)
 
-        self.btn_scan = QPushButton("Scan URL")
+        self.btn_scan = QPushButton("🔍 Scan URL")
         self.btn_scan.setStyleSheet("background-color: #0078d7; color: white; font-weight: bold; padding: 5px 15px;")
         self.btn_scan.clicked.connect(self.start_scan)
         input_layout.addWidget(self.btn_scan)
         
-        self.btn_batch = QPushButton("Import Batch")
+        self.btn_batch = QPushButton("📂 Import Batch")
         self.btn_batch.clicked.connect(self.import_batch)
         input_layout.addWidget(self.btn_batch)
 
@@ -368,7 +368,7 @@ class PhishingDetectorWidget(QWidget):
         res_layout = QVBoxLayout(self.result_frame)
         
         # Header
-        self.lbl_threat_level = QLabel("Threat Level: -")
+        self.lbl_threat_level = QLabel("🛡️ Threat Level: -")
         self.lbl_threat_level.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         self.lbl_threat_level.setAlignment(Qt.AlignmentFlag.AlignCenter)
         res_layout.addWidget(self.lbl_threat_level)
@@ -382,21 +382,21 @@ class PhishingDetectorWidget(QWidget):
 
         # Details
         details_layout = QHBoxLayout()
-        self.lbl_method = QLabel("Method: -")
-        self.lbl_timestamp = QLabel("Time: -")
+        self.lbl_method = QLabel("⚙️ Method: -")
+        self.lbl_timestamp = QLabel("🕒 Time: -")
         details_layout.addWidget(self.lbl_method)
         details_layout.addStretch()
         details_layout.addWidget(self.lbl_timestamp)
         res_layout.addLayout(details_layout)
 
         # Reasons
-        self.lbl_reasons = QLabel("Reasons: -")
+        self.lbl_reasons = QLabel("📝 Reasons: -")
         self.lbl_reasons.setWordWrap(True)
         self.lbl_reasons.setStyleSheet("color: #aaa; font-style: italic; margin-top: 5px;")
         res_layout.addWidget(self.lbl_reasons)
 
         # URL Details
-        self.lbl_details = QLabel("URL Details: -")
+        self.lbl_details = QLabel("ℹ️ URL Details: -")
         self.lbl_details.setWordWrap(True)
         self.lbl_details.setStyleSheet("color: #ccc; margin-top: 10px; border-top: 1px solid #555; padding-top: 5px; font-size: 11px;")
         res_layout.addWidget(self.lbl_details)
@@ -404,7 +404,7 @@ class PhishingDetectorWidget(QWidget):
         layout.addWidget(self.result_frame)
 
         # --- History Section ---
-        hist_group = QGroupBox("Scan History")
+        hist_group = QGroupBox("📜 Scan History")
         hist_main_layout = QHBoxLayout(hist_group)
 
         # Left: Table & Controls
@@ -418,11 +418,11 @@ class PhishingDetectorWidget(QWidget):
         self.progress_bar.hide()
         hist_controls.addWidget(self.progress_bar)
 
-        self.btn_export = QPushButton("Export History")
+        self.btn_export = QPushButton("💾 Export History")
         self.btn_export.clicked.connect(self.export_history)
         hist_controls.addWidget(self.btn_export)
         
-        self.btn_reset = QPushButton("Clear History")
+        self.btn_reset = QPushButton("🗑️ Clear History")
         self.btn_reset.clicked.connect(self.clear_history)
         hist_controls.addWidget(self.btn_reset)
         hist_controls.addStretch()
@@ -431,7 +431,7 @@ class PhishingDetectorWidget(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Timestamp", "URL", "Threat Level", "Score"])
+        self.table.setHorizontalHeaderLabels(["🕒 Timestamp", "🌐 URL", "🛡️ Threat Level", "📊 Score"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch) # URL stretches
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -473,14 +473,14 @@ class PhishingDetectorWidget(QWidget):
 
     def on_scan_complete(self, result):
         self.btn_scan.setEnabled(True)
-        self.btn_scan.setText("Scan URL")
+        self.btn_scan.setText("🔍 Scan URL")
         self.display_result(result)
         self.save_result(result)
         self.load_history() # Refresh table
 
     def on_scan_error(self, error_msg):
         self.btn_scan.setEnabled(True)
-        self.btn_scan.setText("Scan URL")
+        self.btn_scan.setText("🔍 Scan URL")
         QMessageBox.critical(self, "Scan Error", f"An error occurred: {error_msg}")
 
     def import_batch(self):
@@ -522,12 +522,12 @@ class PhishingDetectorWidget(QWidget):
         score = result['score']
         
         # Update Labels
-        self.lbl_threat_level.setText(f"Threat Level: {level}")
-        self.lbl_method.setText(f"Method: {result['method']}")
-        self.lbl_timestamp.setText(f"Time: {result['timestamp']}")
+        self.lbl_threat_level.setText(f"🛡️ Threat Level: {level}")
+        self.lbl_method.setText(f"⚙️ Method: {result['method']}")
+        self.lbl_timestamp.setText(f"🕒 Time: {result['timestamp']}")
         
         reasons_text = " • ".join(result['reasons']) if result['reasons'] else "No specific threats detected."
-        self.lbl_reasons.setText(f"Analysis: {reasons_text}")
+        self.lbl_reasons.setText(f"📝 Analysis: {reasons_text}")
 
         # Display Details
         details = result.get('details', {})

@@ -206,7 +206,7 @@ class LoginWindow(AuthStyle):
         self.password_input = PasswordInput("Password")
         self.frame_layout.addWidget(self.password_input)
 
-        self.login_btn = QPushButton("Login")
+        self.login_btn = QPushButton("🔓 Login")
         self.login_btn.clicked.connect(self.handle_login)
         self.frame_layout.addWidget(self.login_btn)
 
@@ -214,17 +214,17 @@ class LoginWindow(AuthStyle):
         self.spinner = LoadingSpinner()
         self.frame_layout.addWidget(self.spinner, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.google_btn = QPushButton("Sign in with Google")
+        self.google_btn = QPushButton("🌐 Sign in with Google")
         self.google_btn.setObjectName("GoogleButton")
         self.google_btn.clicked.connect(self.handle_google_login)
         self.frame_layout.addWidget(self.google_btn)
 
-        self.forgot_link = QPushButton("Forgot Password?")
+        self.forgot_link = QPushButton("❓ Forgot Password?")
         self.forgot_link.setObjectName("LinkButton")
         self.forgot_link.clicked.connect(self.switch_to_forgot.emit)
         self.frame_layout.addWidget(self.forgot_link)
 
-        self.signup_link = QPushButton("Create an Account")
+        self.signup_link = QPushButton("✨ Create an Account")
         self.signup_link.setObjectName("LinkButton")
         self.signup_link.clicked.connect(self.switch_to_signup.emit)
         self.frame_layout.addWidget(self.signup_link)
@@ -243,7 +243,7 @@ class LoginWindow(AuthStyle):
 
         self.spinner.hide()
         self.login_btn.setEnabled(True)
-        self.login_btn.setText("Login")
+        self.login_btn.setText("🔓 Login")
 
         if self.db.verify_user(username, password):
             dlg = LoginSuccessDialog(self, username)
@@ -305,12 +305,12 @@ class LoginWindow(AuthStyle):
         dlg.exec()
         self.login_success.emit(email)
         self.login_btn.setEnabled(True)
-        self.google_btn.setText("Sign in with Google")
+        self.google_btn.setText("🌐 Sign in with Google")
 
     def on_google_error(self, error_msg):
         QMessageBox.critical(self, "Google Login Error", error_msg)
         self.login_btn.setEnabled(True)
-        self.google_btn.setText("Sign in with Google")
+        self.google_btn.setText("🌐 Sign in with Google")
 
     def clear_inputs(self):
         self.username_input.clear()

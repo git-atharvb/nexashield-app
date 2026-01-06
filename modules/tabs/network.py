@@ -153,7 +153,7 @@ class ProtocolPieChart(QWidget):
         self.setMinimumSize(150, 150)
         self.tcp_count = 0
         self.udp_count = 0
-        self.title = "Protocol Distribution"
+        self.title = "🥧 Protocol Distribution"
 
     def update_counts(self, tcp, udp):
         self.tcp_count = tcp
@@ -245,14 +245,14 @@ class NetworkMonitorWidget(QWidget):
         self.combo_interface = QComboBox()
         self.combo_interface.addItem("All")
         self.combo_interface.currentTextChanged.connect(self.handle_interface_change)
-        control_bar.addWidget(QLabel("Interface:"))
+        control_bar.addWidget(QLabel("🌐 Interface:"))
         control_bar.addWidget(self.combo_interface)
 
         # Protocol Selector
         self.combo_protocol = QComboBox()
         self.combo_protocol.addItems(["All", "TCP", "UDP"])
         self.combo_protocol.currentTextChanged.connect(self.handle_protocol_change)
-        control_bar.addWidget(QLabel("Protocol:"))
+        control_bar.addWidget(QLabel("🔌 Protocol:"))
         control_bar.addWidget(self.combo_protocol)
 
         # Search
@@ -264,14 +264,14 @@ class NetworkMonitorWidget(QWidget):
 
         control_bar.addStretch()
 
-        self.btn_refresh = QPushButton("Refresh")
+        self.btn_refresh = QPushButton("🔄 Refresh")
         self.btn_refresh.clicked.connect(self.refresh_data)
         control_bar.addWidget(self.btn_refresh)
 
         layout.addLayout(control_bar)
 
         # --- Dashboard Area (Top) ---
-        dashboard_group = QGroupBox("Network Dashboard")
+        dashboard_group = QGroupBox("📊 Network Dashboard")
         dashboard_layout = QHBoxLayout(dashboard_group)
         dashboard_layout.setSpacing(15)
         
@@ -280,20 +280,20 @@ class NetworkMonitorWidget(QWidget):
         info_panel.setStyleSheet("background-color: #2b2b2b; border-radius: 5px;")
         info_layout = QVBoxLayout(info_panel)
         
-        self.lbl_interface_name = QLabel("Interface: -")
+        self.lbl_interface_name = QLabel("🌐 Interface: -")
         self.lbl_interface_name.setStyleSheet("color: #aaa; font-weight: bold;")
         info_layout.addWidget(self.lbl_interface_name)
         
-        self.lbl_hostname = QLabel(f"Host: {socket.gethostname()}")
+        self.lbl_hostname = QLabel(f"💻 Host: {socket.gethostname()}")
         self.lbl_hostname.setStyleSheet("color: white; font-weight: bold; margin-bottom: 5px;")
         info_layout.addWidget(self.lbl_hostname)
 
-        self.lbl_ip = QLabel("IP: -")
-        self.lbl_mac = QLabel("MAC: -")
-        self.lbl_netmask = QLabel("Mask: -")
-        self.lbl_broadcast = QLabel("Broadcast: -")
-        self.lbl_sent = QLabel("Sent: -")
-        self.lbl_recv = QLabel("Recv: -")
+        self.lbl_ip = QLabel("📍 IP: -")
+        self.lbl_mac = QLabel("🆔 MAC: -")
+        self.lbl_netmask = QLabel("🎭 Mask: -")
+        self.lbl_broadcast = QLabel("📡 Broadcast: -")
+        self.lbl_sent = QLabel("⬆️ Sent: -")
+        self.lbl_recv = QLabel("⬇️ Recv: -")
         
         self.lbl_ip.setStyleSheet("color: white; font-size: 11pt;")
         self.lbl_mac.setStyleSheet("color: #ccc; font-size: 9pt;")
@@ -313,8 +313,8 @@ class NetworkMonitorWidget(QWidget):
         dashboard_layout.addWidget(info_panel, 1)
         
         # Charts
-        self.chart_down = NetworkChart("Download", "#28a745") # Green
-        self.chart_up = NetworkChart("Upload", "#0078d7")     # Blue
+        self.chart_down = NetworkChart("⬇️ Download", "#28a745") # Green
+        self.chart_up = NetworkChart("⬆️ Upload", "#0078d7")     # Blue
         self.pie_chart = ProtocolPieChart()
         
         dashboard_layout.addWidget(self.chart_down, 2)
@@ -324,13 +324,13 @@ class NetworkMonitorWidget(QWidget):
         layout.addWidget(dashboard_group)
 
         # --- Active Connections Table (Bottom) ---
-        conn_group = QGroupBox("Active Connections")
+        conn_group = QGroupBox("🔗 Active Connections")
         conn_layout = QVBoxLayout(conn_group)
 
         self.conn_table = QTableWidget()
         self.conn_table.setColumnCount(6)
         self.conn_table.setHorizontalHeaderLabels([
-            "Process", "PID", "Protocol", "Local Address", "Remote Address", "Status"
+            "⚙️ Process", "🆔 PID", "🔌 Protocol", "🏠 Local Address", "🌍 Remote Address", "🚦 Status"
         ])
         self.conn_table.verticalHeader().setVisible(False)
         self.conn_table.setAlternatingRowColors(True)
@@ -419,13 +419,13 @@ class NetworkMonitorWidget(QWidget):
 
             # Update Dashboard if this is the selected interface (or first one if All)
             if (self.interface_filter == "All" and row == 0) or (self.interface_filter == nic):
-                self.lbl_interface_name.setText(f"Interface: {nic}")
-                self.lbl_ip.setText(f"IP: {ip_addr}")
-                self.lbl_mac.setText(f"MAC: {mac_addr}")
-                self.lbl_netmask.setText(f"Mask: {netmask}")
-                self.lbl_broadcast.setText(f"Broadcast: {broadcast}")
-                self.lbl_sent.setText(f"Sent: {self.format_bytes(sent)}")
-                self.lbl_recv.setText(f"Recv: {self.format_bytes(recv)}")
+                self.lbl_interface_name.setText(f"🌐 Interface: {nic}")
+                self.lbl_ip.setText(f"📍 IP: {ip_addr}")
+                self.lbl_mac.setText(f"🆔 MAC: {mac_addr}")
+                self.lbl_netmask.setText(f"🎭 Mask: {netmask}")
+                self.lbl_broadcast.setText(f"📡 Broadcast: {broadcast}")
+                self.lbl_sent.setText(f"⬆️ Sent: {self.format_bytes(sent)}")
+                self.lbl_recv.setText(f"⬇️ Recv: {self.format_bytes(recv)}")
                 self.chart_up.update_value(up_speed)
                 self.chart_down.update_value(down_speed)
 

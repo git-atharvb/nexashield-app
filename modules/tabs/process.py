@@ -138,7 +138,7 @@ class ProcessMonitorWidget(QWidget):
         
         # Search
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search Process Name or PID...")
+        self.search_input.setPlaceholderText("🔍 Search Process Name or PID...")
         self.search_input.setFixedWidth(250)
         self.search_input.textChanged.connect(self.handle_search)
         control_bar.addWidget(self.search_input)
@@ -148,36 +148,36 @@ class ProcessMonitorWidget(QWidget):
         self.btn_clear_search.clicked.connect(self.clear_search)
         control_bar.addWidget(self.btn_clear_search)
 
-        self.chk_select_all = QCheckBox("Select All")
+        self.chk_select_all = QCheckBox("✅ Select All")
         self.chk_select_all.stateChanged.connect(self.toggle_select_all)
         control_bar.addWidget(self.chk_select_all)
 
         control_bar.addStretch()
 
         # Action Buttons
-        self.btn_suspend = QPushButton("Suspend")
+        self.btn_suspend = QPushButton("⏸️ Suspend")
         self.btn_suspend.clicked.connect(lambda: self.change_process_state("suspend"))
         control_bar.addWidget(self.btn_suspend)
 
-        self.btn_resume = QPushButton("Resume")
+        self.btn_resume = QPushButton("▶️ Resume")
         self.btn_resume.clicked.connect(lambda: self.change_process_state("resume"))
         control_bar.addWidget(self.btn_resume)
 
-        self.btn_kill = QPushButton("End Task")
+        self.btn_kill = QPushButton("💀 End Task")
         self.btn_kill.setObjectName("DangerButton") # For red styling in QSS
         self.btn_kill.setStyleSheet("background-color: #dc3545; color: white; font-weight: bold;")
         self.btn_kill.clicked.connect(self.kill_process)
         control_bar.addWidget(self.btn_kill)
 
-        self.btn_refresh = QPushButton("Refresh")
+        self.btn_refresh = QPushButton("🔄 Refresh")
         self.btn_refresh.clicked.connect(self.refresh_data)
         control_bar.addWidget(self.btn_refresh)
 
-        self.btn_export = QPushButton("Export CSV")
+        self.btn_export = QPushButton("📄 Export CSV")
         self.btn_export.clicked.connect(self.export_csv)
         control_bar.addWidget(self.btn_export)
 
-        self.btn_export_pdf = QPushButton("Export PDF")
+        self.btn_export_pdf = QPushButton("📑 Export PDF")
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         control_bar.addWidget(self.btn_export_pdf)
 
@@ -190,7 +190,7 @@ class ProcessMonitorWidget(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "", "PID", "Name", "Status", "CPU %", "Mem %", "User", "Start Time"
+            "", "🆔 PID", "⚙️ Name", "🚦 Status", "🧠 CPU %", "💾 Mem %", "👤 User", "⏱️ Start Time"
         ])
         
         # Table Styling & Behavior
@@ -215,8 +215,8 @@ class ProcessMonitorWidget(QWidget):
         charts_layout = QVBoxLayout(self.charts_panel)
         charts_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.cpu_chart = ResourceChart("CPU Usage", "#dc3545")
-        self.mem_chart = ResourceChart("RAM Usage", "#ffc107")
+        self.cpu_chart = ResourceChart("🧠 CPU Usage", "#dc3545")
+        self.mem_chart = ResourceChart("💾 RAM Usage", "#ffc107")
         charts_layout.addWidget(self.cpu_chart)
         charts_layout.addWidget(self.mem_chart)
         
@@ -224,7 +224,7 @@ class ProcessMonitorWidget(QWidget):
         layout.addLayout(content_layout)
 
         # Status Bar / Footer
-        self.status_label = QLabel("Ready")
+        self.status_label = QLabel("✅ Ready")
         self.status_label.setStyleSheet("color: #888;")
         layout.addWidget(self.status_label)
 

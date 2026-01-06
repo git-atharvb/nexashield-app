@@ -92,16 +92,16 @@ class AntivirusWidget(QWidget):
 
         # --- Header ---
         header_layout = QHBoxLayout()
-        title = QLabel("Smart Antivirus Engine")
+        title = QLabel("🛡️ Smart Antivirus Engine")
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
         header_layout.addWidget(title)
         header_layout.addStretch()
         
-        self.rt_status = QLabel("Real-Time: OFF")
+        self.rt_status = QLabel("⚡ Real-Time: OFF")
         self.rt_status.setStyleSheet("color: #dc3545; font-weight: bold;")
         header_layout.addWidget(self.rt_status)
 
-        self.rt_btn = QPushButton("Enable Real-Time")
+        self.rt_btn = QPushButton("✅ Enable Real-Time")
         self.rt_btn.clicked.connect(self.toggle_realtime)
         if not WATCHDOG_AVAILABLE:
             self.rt_btn.setEnabled(False)
@@ -122,10 +122,10 @@ class AntivirusWidget(QWidget):
         self.setup_scheduler_tab()
         self.setup_history_tab()
         
-        self.tabs.addTab(self.scanner_tab, "Scanner")
-        self.tabs.addTab(self.quarantine_tab, "Quarantine")
-        self.tabs.addTab(self.scheduler_tab, "Scheduler")
-        self.tabs.addTab(self.history_tab, "Scan History")
+        self.tabs.addTab(self.scanner_tab, "🔍 Scanner")
+        self.tabs.addTab(self.quarantine_tab, "☣️ Quarantine")
+        self.tabs.addTab(self.scheduler_tab, "📅 Scheduler")
+        self.tabs.addTab(self.history_tab, "📜 Scan History")
         layout.addWidget(self.tabs)
 
     def setup_scanner_tab(self):
@@ -135,30 +135,30 @@ class AntivirusWidget(QWidget):
         top_layout = QHBoxLayout()
         
         # Left: System Scan Controls (Folder/Directory)
-        scan_group = QGroupBox("System & Directory Scan")
+        scan_group = QGroupBox("💻 System & Directory Scan")
         scan_layout = QVBoxLayout(scan_group)
         
         btn_row1 = QHBoxLayout()
-        btn_quick = QPushButton("Quick Scan")
+        btn_quick = QPushButton("⚡ Quick Scan")
         btn_quick.setStyleSheet("background-color: #0078d7; color: white; padding: 8px;")
         btn_quick.clicked.connect(lambda: self.start_scan("Quick"))
         
-        btn_full = QPushButton("Full Scan")
+        btn_full = QPushButton("🔍 Full Scan")
         btn_full.setStyleSheet("background-color: #6c757d; color: white; padding: 8px;")
         btn_full.clicked.connect(lambda: self.start_scan("Full"))
         btn_row1.addWidget(btn_quick)
         btn_row1.addWidget(btn_full)
         
         btn_row2 = QHBoxLayout()
-        btn_custom = QPushButton("Custom Scan")
+        btn_custom = QPushButton("📂 Custom Scan")
         btn_custom.setStyleSheet("background-color: #28a745; color: white; padding: 8px;")
         btn_custom.clicked.connect(self.select_custom_scan)
         
-        btn_file = QPushButton("Scan File")
+        btn_file = QPushButton("📄 Scan File")
         btn_file.setStyleSheet("background-color: #6f42c1; color: white; padding: 8px;")
         btn_file.clicked.connect(self.select_file_scan)
         
-        btn_update = QPushButton("Update DB")
+        btn_update = QPushButton("🔄 Update DB")
         btn_update.setStyleSheet("background-color: #17a2b8; color: white; padding: 8px;")
         btn_update.clicked.connect(self.update_definitions)
         btn_row2.addWidget(btn_custom)
@@ -169,13 +169,13 @@ class AntivirusWidget(QWidget):
         scan_layout.addLayout(btn_row2)
         
         # Right: Manual Hash Scan (Files)
-        hash_group = QGroupBox("Manual File Hash Scan")
+        hash_group = QGroupBox("🔢 Manual File Hash Scan")
         hash_layout = QVBoxLayout(hash_group)
         
         self.hash_input = QLineEdit()
-        self.hash_input.setPlaceholderText("Enter SHA-256 Hash...")
+        self.hash_input.setPlaceholderText("🔢 Enter SHA-256 Hash...")
         
-        btn_hash = QPushButton("Check Hash")
+        btn_hash = QPushButton("🔎 Check Hash")
         btn_hash.setStyleSheet("background-color: #6610f2; color: white; padding: 8px;")
         btn_hash.clicked.connect(self.check_manual_hash)
         
@@ -190,7 +190,7 @@ class AntivirusWidget(QWidget):
         layout.addLayout(top_layout)
 
         # Status Area
-        self.status_label = QLabel("Status: Idle - Drag & Drop files here to scan")
+        self.status_label = QLabel("ℹ️ Status: Idle - Drag & Drop files here to scan")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.status_label)
 
@@ -215,13 +215,13 @@ class AntivirusWidget(QWidget):
         """)
         progress_layout.addWidget(self.progress_bar)
         
-        self.pause_btn = QPushButton("Pause")
+        self.pause_btn = QPushButton("⏸️ Pause")
         self.pause_btn.setFixedWidth(80)
         self.pause_btn.setEnabled(False)
         self.pause_btn.clicked.connect(self.toggle_pause)
         progress_layout.addWidget(self.pause_btn)
         
-        self.stop_btn = QPushButton("Stop")
+        self.stop_btn = QPushButton("⏹️ Stop")
         self.stop_btn.setFixedWidth(80)
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self.stop_scan)
@@ -232,7 +232,7 @@ class AntivirusWidget(QWidget):
         # Results Table
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(6)
-        self.results_table.setHorizontalHeaderLabels(["File Path", "Threat", "Type", "Severity", "Method", "Time"])
+        self.results_table.setHorizontalHeaderLabels(["📂 File Path", "🦠 Threat", "🏷️ Type", "⚠️ Severity", "⚙️ Method", "🕒 Time"])
         self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.results_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.results_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -241,23 +241,23 @@ class AntivirusWidget(QWidget):
 
         # Action Buttons
         actions = QHBoxLayout()
-        btn_select_all = QPushButton("Select All")
+        btn_select_all = QPushButton("✅ Select All")
         btn_select_all.setStyleSheet("background-color: #17a2b8; color: white;")
         btn_select_all.clicked.connect(self.select_all_threats)
 
-        btn_export = QPushButton("Export Report (PDF)")
+        btn_export = QPushButton("📄 Export Report (PDF)")
         btn_export.setStyleSheet("background-color: #fd7e14; color: white;")
         btn_export.clicked.connect(lambda: self.export_table_to_pdf(self.results_table, "Scan Results", "ScanReport.pdf"))
 
-        btn_del = QPushButton("Delete Selected")
+        btn_del = QPushButton("🗑️ Delete Selected")
         btn_del.setStyleSheet("background-color: #dc3545; color: white;")
         btn_del.clicked.connect(self.delete_threat)
         
-        btn_quarantine = QPushButton("Quarantine Selected")
+        btn_quarantine = QPushButton("☣️ Quarantine Selected")
         btn_quarantine.setStyleSheet("background-color: #ffc107; color: black;")
         btn_quarantine.clicked.connect(self.quarantine_threat)
         
-        btn_ignore = QPushButton("Ignore")
+        btn_ignore = QPushButton("👁️ Ignore")
         btn_ignore.clicked.connect(self.ignore_threat)
         
         actions.addWidget(btn_select_all)
@@ -273,26 +273,26 @@ class AntivirusWidget(QWidget):
         
         self.quarantine_table = QTableWidget()
         self.quarantine_table.setColumnCount(3)
-        self.quarantine_table.setHorizontalHeaderLabels(["Original Path", "Quarantined Date", "Status"])
+        self.quarantine_table.setHorizontalHeaderLabels(["📂 Original Path", "📅 Quarantined Date", "ℹ️ Status"])
         self.quarantine_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.quarantine_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.quarantine_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         layout.addWidget(self.quarantine_table)
 
         btns = QHBoxLayout()
-        select_all_btn = QPushButton("Select All")
+        select_all_btn = QPushButton("✅ Select All")
         select_all_btn.setStyleSheet("background-color: #17a2b8; color: white;")
         select_all_btn.clicked.connect(self.quarantine_table.selectAll)
 
-        restore_btn = QPushButton("Restore Selected")
+        restore_btn = QPushButton("♻️ Restore Selected")
         restore_btn.setStyleSheet("background-color: #28a745; color: white;")
         restore_btn.clicked.connect(self.restore_selected)
         
-        export_btn = QPushButton("Export Report (PDF)")
+        export_btn = QPushButton("📄 Export Report (PDF)")
         export_btn.setStyleSheet("background-color: #fd7e14; color: white;")
         export_btn.clicked.connect(lambda: self.export_table_to_pdf(self.quarantine_table, "Quarantine History", "QuarantineReport.pdf"))
         
-        del_btn = QPushButton("Delete Permanently")
+        del_btn = QPushButton("🗑️ Delete Permanently")
         del_btn.setStyleSheet("background-color: #dc3545; color: white;")
         del_btn.clicked.connect(self.delete_quarantined_selected)
         
@@ -310,7 +310,7 @@ class AntivirusWidget(QWidget):
         layout.setContentsMargins(30, 30, 30, 30)
 
         # Title
-        title = QLabel("Scheduled Scanning")
+        title = QLabel("📅 Scheduled Scanning")
         title.setStyleSheet("font-size: 22px; font-weight: bold; color: #0078d7;")
         layout.addWidget(title)
 
@@ -339,7 +339,7 @@ class AntivirusWidget(QWidget):
         form_layout.setContentsMargins(20, 20, 20, 20)
         form_layout.setSpacing(15)
 
-        self.sched_enable = QCheckBox("Enable Daily Scan")
+        self.sched_enable = QCheckBox("✅ Enable Daily Scan")
         form_layout.addRow("Status:", self.sched_enable)
 
         self.sched_type = QComboBox()
@@ -353,7 +353,7 @@ class AntivirusWidget(QWidget):
         layout.addWidget(container)
 
         # Save Button
-        save_btn = QPushButton("Save Configuration")
+        save_btn = QPushButton("💾 Save Configuration")
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.setStyleSheet("""
             QPushButton {
@@ -374,18 +374,18 @@ class AntivirusWidget(QWidget):
         
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(4)
-        self.history_table.setHorizontalHeaderLabels(["Scan Type", "Files Scanned", "Threats Found", "Timestamp"])
+        self.history_table.setHorizontalHeaderLabels(["🔍 Scan Type", "📂 Files Scanned", "🦠 Threats Found", "🕒 Timestamp"])
         self.history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.history_table)
         
-        refresh_btn = QPushButton("Refresh History")
+        refresh_btn = QPushButton("🔄 Refresh History")
         refresh_btn.clicked.connect(self.load_history)
         
-        export_btn = QPushButton("Export Report (PDF)")
+        export_btn = QPushButton("📄 Export Report (PDF)")
         export_btn.setStyleSheet("background-color: #fd7e14; color: white;")
         export_btn.clicked.connect(lambda: self.export_table_to_pdf(self.history_table, "Scan History", "ScanHistoryReport.pdf"))
         
-        clear_btn = QPushButton("Clear History")
+        clear_btn = QPushButton("🗑️ Clear History")
         clear_btn.setStyleSheet("background-color: #dc3545; color: white;")
         clear_btn.clicked.connect(self.clear_history)
         
@@ -652,9 +652,9 @@ class AntivirusWidget(QWidget):
         if not self.scan_thread:
             return
             
-        if self.pause_btn.text() == "Pause":
+        if "Pause" in self.pause_btn.text():
             self.scan_thread.pause()
-            self.pause_btn.setText("Resume")
+            self.pause_btn.setText("▶️ Resume")
             self.status_label.setText(self.status_label.text() + " (Paused)")
             # Stop indeterminate animation if active by setting a fixed range
             if self.progress_bar.maximum() == 0:
@@ -662,7 +662,7 @@ class AntivirusWidget(QWidget):
                 self.progress_bar.setValue(0) 
         else:
             self.scan_thread.resume()
-            self.pause_btn.setText("Pause")
+            self.pause_btn.setText("⏸️ Pause")
             text = self.status_label.text().replace(" (Paused)", "")
             self.status_label.setText(text)
             # Resume indeterminate animation if it was a full scan
@@ -677,7 +677,7 @@ class AntivirusWidget(QWidget):
             self.status_label.setText("Status: Stopping scan...")
             self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
-            self.pause_btn.setText("Pause")
+            self.pause_btn.setText("⏸️ Pause")
             # Reset progress bar
             self.progress_bar.setRange(0, 100)
             self.progress_bar.setValue(0)
@@ -962,18 +962,18 @@ class AntivirusWidget(QWidget):
             self.observer.schedule(self.event_handler, path_to_watch, recursive=False)
             self.observer.start()
             
-            self.rt_status.setText("Real-Time: ON")
+            self.rt_status.setText("⚡ Real-Time: ON")
             self.rt_status.setStyleSheet("color: #28a745; font-weight: bold;")
-            self.rt_btn.setText("Disable Real-Time")
+            self.rt_btn.setText("❌ Disable Real-Time")
         else:
             # Stop
             if self.observer:
                 self.observer.stop()
                 self.observer.join()
             
-            self.rt_status.setText("Real-Time: OFF")
+            self.rt_status.setText("⚡ Real-Time: OFF")
             self.rt_status.setStyleSheet("color: #dc3545; font-weight: bold;")
-            self.rt_btn.setText("Enable Real-Time")
+            self.rt_btn.setText("✅ Enable Real-Time")
 
     def on_realtime_event(self, file_path):
         # In a real app, queue this. For now, just print or log.
