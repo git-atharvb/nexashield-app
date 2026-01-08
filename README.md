@@ -49,19 +49,17 @@ NexaShield follows a client-server architecture, separating the user interface f
 *   **Data Storage** 🗄️: Securely stores configuration, user data, scan logs, threat intelligence, and potentially model metadata. This includes databases (SQL/NoSQL) for structured data and object storage for larger files or logs.
 *   **Cloud/Local Datasets** ☁️💾: The `Nexa_Datasets` are stored both locally (for development/training) and on cloud platforms (for scalable training and model serving). This ensures data availability, redundancy, and efficient access for ML model training and updates.
 
-```mermaid
-graph TD
-    A[Front-end Application] --> B(Backend API Server)
+# Working Synopsis 
+
+[Front-end Application] --> B(Backend API Server)
     B --> C{ML Service: Phishing Detection}
     B --> D{ML Service: Antivirus Engine}
     C --> E["Nexa_Datasets/phishing (Cloud/Local)"]
     D --> F["Nexa_Datasets/antivirus (Cloud/Local)"]
     B --> G[Database/Data Storage]
-    subgraph External Systems
-        H[Threat Intelligence Feeds] --> B
-        I[External APIs (e.g., WHOIS, VirusTotal)] --> C
-    end
-```
+        H[Threat Intelligence Feeds]
+        I[External APIs (e.g., WHOIS, VirusTotal)]
+
 
 ## 4. Technology Stack
 
