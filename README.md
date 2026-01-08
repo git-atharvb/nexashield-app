@@ -54,8 +54,8 @@ graph TD
     A[Front-end Application] --> B(Backend API Server)
     B --> C{ML Service: Phishing Detection}
     B --> D{ML Service: Antivirus Engine}
-    C --> E[Nexa_Datasets/phishing (Cloud/Local)]
-    D --> F[Nexa_Datasets/antivirus (Cloud/Local)]
+    C --> E["Nexa_Datasets/phishing (Cloud/Local)"]
+    D --> F["Nexa_Datasets/antivirus (Cloud/Local)"]
     B --> G[Database/Data Storage]
     subgraph External Systems
         H[Threat Intelligence Feeds] --> B
