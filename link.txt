@@ -74,8 +74,8 @@ http://goo.gl/update@banking
 http://ow.ly/secure@confirm
 http://t.co/signin@wallet
 http://192.168.1.1@login.com
-http://10.0.0.1@secure.com
-http://192.168.0.1@secure-banking-login-update.paypal-verify.xyz:8080//account
+http://192.168.0.1@secure-banking-login-update.paypal-verify.xyz:8080//accounthttp://10.0.0.1@secure.com
+
 http://xn--paypal-m2a.com@login
 http://xn--apple-43d.com@secure
 http://login-secure-update.xyz:8080//verify

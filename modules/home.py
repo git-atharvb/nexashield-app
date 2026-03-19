@@ -10,6 +10,7 @@ from tabs.phishing_detector import PhishingDetectorWidget
 from tabs.antivirus import AntivirusWidget
 from tabs.memory import MemoryMonitorWidget
 from tabs.cloud import CloudSecurityWidget
+from tabs.nids import NIDSWidget
 
 class LogoutSuccessDialog(QDialog):
     """A custom, modern dialog for successful logout."""
@@ -144,7 +145,7 @@ class HomeWindow(QMainWindow):
             ("🌐 Network", "Network Management"),
             ("🧠 Memory", "Memory Analysis"),
             ("🎣 Phishing", "Phishing Detector"),
-            ("🚨 IDS/IPS", "IDS / IPS"),
+            ("🚨 NIDS", "Network Intrusion Detection System"),
             ("🔥 Firewall", "Firewall Control"),
             ("🛡️ Antivirus", "Antivirus Scanner"),
             ("☁️ Cloud", "Cloud Security")
@@ -238,6 +239,8 @@ class HomeWindow(QMainWindow):
             new_widget = MemoryMonitorWidget()
         elif "Antivirus" in name:
             new_widget = AntivirusWidget()
+        elif "NIDS" in name:
+            new_widget = NIDSWidget()
         elif "Cloud" in name:
             new_widget = CloudSecurityWidget()
         else:

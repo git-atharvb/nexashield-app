@@ -213,6 +213,18 @@ class ProcessMonitorWidget(QWidget):
         # --- Content Area (Split 2:1) ---
         content_layout = QHBoxLayout()
 
+        # --- Resource Charts ---
+        self.charts_panel = QWidget()
+        charts_layout = QVBoxLayout(self.charts_panel)
+        charts_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.cpu_chart = ResourceChart("🧠 CPU Usage", "#dc3545")
+        self.mem_chart = ResourceChart("💾 RAM Usage", "#ffc107")
+        charts_layout.addWidget(self.cpu_chart)
+        charts_layout.addWidget(self.mem_chart)
+        
+        content_layout.addWidget(self.charts_panel, 1) # Stretch 1
+
         # --- Process Table ---
         self.table = QTableWidget()
         self.table.setColumnCount(8)
@@ -236,18 +248,6 @@ class ProcessMonitorWidget(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents) # PID
         
         content_layout.addWidget(self.table, 2) # Stretch 2
-
-        # --- Resource Charts ---
-        self.charts_panel = QWidget()
-        charts_layout = QVBoxLayout(self.charts_panel)
-        charts_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.cpu_chart = ResourceChart("🧠 CPU Usage", "#dc3545")
-        self.mem_chart = ResourceChart("💾 RAM Usage", "#ffc107")
-        charts_layout.addWidget(self.cpu_chart)
-        charts_layout.addWidget(self.mem_chart)
-        
-        content_layout.addWidget(self.charts_panel, 1) # Stretch 1
         layout.addLayout(content_layout)
 
         # Status Bar / Footer
