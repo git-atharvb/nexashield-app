@@ -210,9 +210,10 @@ class PhishingScannerWorker(QThread):
     def __init__(self, url):
         super().__init__()
         self.url = url
-        self.analyzer = PhishingAnalyzer()
+        self.analyzer = None
 
     def run(self):
+        self.analyzer = PhishingAnalyzer() # Load models in the background thread
         result = self.analyzer.scan(self.url)
         if "error" in result:
             self.error_occurred.emit(result["error"])
@@ -228,13 +229,14 @@ class BatchPhishingWorker(QThread):
     def __init__(self, urls):
         super().__init__()
         self.urls = urls
-        self.analyzer = PhishingAnalyzer()
+        self.analyzer = None
         self.is_running = True
 
     def stop(self):
         self.is_running = False
 
     def run(self):
+        self.analyzer = PhishingAnalyzer() # Load models in the background thread
         total = len(self.urls)
         for i, url in enumerate(self.urls):
             if not self.is_running: break

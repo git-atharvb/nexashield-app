@@ -39,6 +39,7 @@ class ScanWorker(QThread):
         self.scanned_bytes = 0
         self.start_time = 0
         self.threats = 0
+        self.last_emit_time = 0.0
 
     def pause(self):
         self.mutex.lock()
@@ -141,7 +142,11 @@ class ScanWorker(QThread):
         # Cap progress at 99% until actually finished
         if progress >= 100: progress = 99
             
-        self.progress_updated.emit(progress, file_path, eta_str)
+        current_time = time.time()
+        # Throttle UI updates to roughly 10 times a second to prevent event loop flooding and UI lag
+        if current_time - self.last_emit_time > 0.1:
+            self.progress_updated.emit(progress, file_path, eta_str)
+            self.last_emit_time = current_time
         
         threat = self.scan_file(file_path)
         if threat:

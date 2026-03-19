@@ -228,10 +228,6 @@ class NetworkMonitorWidget(QWidget):
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.refresh_data)
-        self.timer.start(REFRESH_INTERVAL)
-        
-        # Initial load
-        self.refresh_data()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -350,6 +346,17 @@ class NetworkMonitorWidget(QWidget):
         self.status_label = QLabel("Ready")
         self.status_label.setStyleSheet("color: #888;")
         layout.addWidget(self.status_label)
+
+    def showEvent(self, event):
+        """Start updating when the tab becomes visible."""
+        super().showEvent(event)
+        self.refresh_data()
+        self.timer.start(REFRESH_INTERVAL)
+
+    def hideEvent(self, event):
+        """Stop updating when the tab is hidden to save CPU and prevent UI lag."""
+        super().hideEvent(event)
+        self.timer.stop()
 
     def refresh_data(self):
         if not self.worker.isRunning():
