@@ -143,15 +143,21 @@ class ProcessMonitorWidget(QWidget):
         
         self.timer = QTimer()
         self.timer.timeout.connect(self.refresh_data)
-        self.timer.start(REFRESH_INTERVAL)
-        
-        # Initial load
-        self.refresh_data()
         
         # Chart Timer (1 second updates)
         self.chart_timer = QTimer()
         self.chart_timer.timeout.connect(self.update_charts)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.refresh_data()
+        self.timer.start(REFRESH_INTERVAL)
         self.chart_timer.start(1000)
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.timer.stop()
+        self.chart_timer.stop()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

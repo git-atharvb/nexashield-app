@@ -8,17 +8,106 @@ import subprocess
 import platform
 from collections import deque
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, 
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
     QFrame, QCheckBox, QFileDialog, QMessageBox, QSizePolicy, 
-    QAbstractItemView, QApplication, QGroupBox, QTabWidget, QToolTip
+    QAbstractItemView, QGroupBox, QTabWidget, QToolTip
 )
-from PyQt6.QtCore import Qt, QTimer, QRectF, QBuffer, QIODevice, QByteArray, QSize
+from PyQt6.QtCore import Qt, QTimer, QRectF, QBuffer, QIODevice, QByteArray, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import (
     QColor, QPainter, QPainterPath, QLinearGradient, QPen, QFont, 
     QTextDocument, QBrush, QPalette, QIcon
 )
 from PyQt6.QtPrintSupport import QPrinter
+
+class TempCleanerWorker(QThread):
+    """Cleans temporary files recursively in a background thread to prevent UI lockup."""
+    finished_clean = pyqtSignal(int, int) # count, freed
+
+    def run(self):
+        temp_dir = os.environ.get('TEMP') or '/tmp'
+        freed = 0
+        count = 0
+        for root, _, files in os.walk(temp_dir):
+            for name in files:
+                try:
+                    p = os.path.join(root, name)
+                    s = os.path.getsize(p)
+                    os.remove(p)
+                    freed += s
+                    count += 1
+                except: pass
+        self.finished_clean.emit(count, freed)
+
+class MemoryWorker(QThread):
+    """Asynchronously gathers all memory, disk partitions, and top-processes data."""
+    data_fetched = pyqtSignal(dict)
+    
+    def __init__(self, prev_disk_io, last_io_time, smart_cache, smart_last_check, boot_time):
+        super().__init__()
+        self.prev_disk_io = prev_disk_io
+        self.last_io_time = last_io_time
+        self.smart_cache = smart_cache
+        self.smart_last_check = smart_last_check
+        self.boot_time = boot_time
+
+    def run(self):
+        data = {}
+        try:
+            data['mem'] = psutil.virtual_memory()
+            data['swap'] = psutil.swap_memory()
+        except: pass
+        
+        data['cpu'] = psutil.cpu_percent(interval=None)
+        data['uptime'] = str(datetime.datetime.now() - self.boot_time).split('.')[0]
+        
+        try:
+            curr_io = psutil.disk_io_counters()
+            curr_time = time.time()
+            data['r_speed'] = 0
+            data['w_speed'] = 0
+            if curr_io and self.prev_disk_io:
+                delta = curr_time - self.last_io_time
+                if delta > 0:
+                    data['r_speed'] = (curr_io.read_bytes - self.prev_disk_io.read_bytes) / delta
+                    data['w_speed'] = (curr_io.write_bytes - self.prev_disk_io.write_bytes) / delta
+            data['new_disk_io'] = curr_io
+            data['new_last_io_time'] = curr_time
+        except: pass
+        
+        curr_time = time.time()
+        if curr_time - self.smart_last_check >= 60:
+            self.smart_last_check = curr_time
+            if os.name == 'nt':
+                try:
+                    cmd = "wmic volume get DriveLetter,Status"
+                    si = subprocess.STARTUPINFO()
+                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    out = subprocess.check_output(cmd, startupinfo=si, shell=False, timeout=2).decode()
+                    for line in out.splitlines():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            self.smart_cache[parts[0]] = "Good" if parts[1] == "OK" else "Warning"
+                except: pass
+        data['smart_cache'] = self.smart_cache
+        data['smart_last_check'] = self.smart_last_check
+        
+        parts_data = []
+        try:
+            for part in psutil.disk_partitions():
+                try:
+                    usage = psutil.disk_usage(part.mountpoint)
+                    parts_data.append({'mountpoint': part.mountpoint, 'total': usage.total, 'free': usage.free, 'percent': usage.percent, 'fstype': part.fstype})
+                except: continue
+            data['partitions'] = parts_data
+        except: pass
+
+        try:
+            procs = sorted(psutil.process_iter(['pid', 'name', 'memory_info']), key=lambda p: p.info['memory_info'].rss, reverse=True)[:5]
+            data['procs'] = [{'pid': p.info['pid'], 'name': p.info['name'], 'rss': p.info['memory_info'].rss} for p in procs]
+        except: pass
+        
+        self.data_fetched.emit(data)
 
 # --- Custom UI Components ---
 
@@ -447,9 +536,16 @@ class MemoryMonitorWidget(QWidget):
         self.refresh_timer = QTimer(self)
         self.refresh_timer.setInterval(2000) # 2 seconds
         self.refresh_timer.timeout.connect(self.update_all_stats)
-        self.refresh_timer.start()
-        
+
+    def showEvent(self, event):
+        super().showEvent(event)
         self.update_all_stats()
+        if self.chk_auto.isChecked():
+            self.refresh_timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.refresh_timer.stop()
 
     def _setup_ui(self):
         # --- Left Column: Visuals & Statistics ---
@@ -601,154 +697,95 @@ class MemoryMonitorWidget(QWidget):
         self.update_all_stats()
 
     def update_all_stats(self):
-        try:
-            self._update_memory()
-            self._update_storage()
-            self._update_system_info()
-            self._update_top_processes()
-        except KeyboardInterrupt:
-            # Gracefully handle manual termination and stop the background timer
-            self.refresh_timer.stop()
-        except Exception:
-            pass
-
-    def _update_system_info(self):
-        uptime = datetime.datetime.now() - self.boot_time
-        self.info_uptime.set_value(str(uptime).split('.')[0])
-        
-        # Update Flow Diagram
-        cpu = psutil.cpu_percent(interval=None)
-        ram = psutil.virtual_memory().percent
-        swap = psutil.swap_memory().percent
-        disk_active = (self.chart_read.current_value > 0 or self.chart_write.current_value > 0)
-        self.flow_diagram.update_values(cpu, ram, swap, disk_active)
-        
-        # Update totals
-        self.info_mem.set_value(self._fmt(psutil.virtual_memory().total))
-        self.info_swap.set_value(self._fmt(psutil.swap_memory().total))
-
-    def _update_memory(self):
-        try:
-            mem = psutil.virtual_memory()
-            swap = psutil.swap_memory()
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            return
             
+        self.worker = MemoryWorker(
+            self.prev_disk_io, self.last_io_time, 
+            self.smart_cache, self.smart_last_check, 
+            self.boot_time
+        )
+        self.worker.data_fetched.connect(self.handle_stats_data)
+        self.worker.start()
+
+    def handle_stats_data(self, data):
+        if 'mem' in data:
+            mem = data['mem']
+            swap = data['swap']
             self.chart_ram_hist.update_value(mem.percent)
             self.donut_ram.update_value(mem.percent)
             self.donut_swap.update_value(swap.percent)
-            
             self.card_total.set_value(self._fmt(mem.total))
             self.card_used.set_value(self._fmt(mem.used))
             self.card_avail.set_value(self._fmt(mem.available))
             self.card_swap.set_value(self._fmt(swap.used))
+            self.info_mem.set_value(self._fmt(mem.total))
+            self.info_swap.set_value(self._fmt(swap.total))
+
+        if 'new_disk_io' in data:
+            self.prev_disk_io = data['new_disk_io']
+            self.last_io_time = data['new_last_io_time']
+            self.chart_read.update_value(data.get('r_speed', 0))
+            self.chart_write.update_value(data.get('w_speed', 0))
+
+        if 'cpu' in data:
+            disk_active = (self.chart_read.current_value > 0 or self.chart_write.current_value > 0)
+            self.flow_diagram.update_values(data['cpu'], data.get('mem').percent if 'mem' in data else 0, data.get('swap').percent if 'swap' in data else 0, disk_active)
+
+        if 'uptime' in data:
+            self.info_uptime.set_value(data['uptime'])
+
+        if 'smart_cache' in data:
+            self.smart_cache = data['smart_cache']
+            self.smart_last_check = data['smart_last_check']
+
+        if 'partitions' in data:
+            self.disk_table.setRowCount(0)
+            chart_data = []
+            for p in data['partitions']:
+                row = self.disk_table.rowCount()
+                self.disk_table.insertRow(row)
+                self.disk_table.setItem(row, 0, QTableWidgetItem(p['mountpoint']))
+                self.disk_table.setItem(row, 1, QTableWidgetItem(self._fmt(p['total'])))
+                self.disk_table.setItem(row, 2, QTableWidgetItem(self._fmt(p['free'])))
                 
-        except Exception:
-            pass
-
-    def _update_storage(self):
-        # 1. Disk I/O
-        try:
-            curr_io = psutil.disk_io_counters()
-            curr_time = time.time()
-            delta = curr_time - self.last_io_time
-            if delta > 0 and self.prev_disk_io:
-                r_speed = (curr_io.read_bytes - self.prev_disk_io.read_bytes) / delta
-                w_speed = (curr_io.write_bytes - self.prev_disk_io.write_bytes) / delta
-                self.chart_read.update_value(r_speed)
-                self.chart_write.update_value(w_speed)
-            self.prev_disk_io = curr_io
-            self.last_io_time = curr_time
-        except: pass
-
-        # 2. Partitions & Health
-        self._refresh_smart()
-        self.disk_table.setRowCount(0)
-        
-        partition_data = []
-        
-        try:
-            for part in psutil.disk_partitions():
-                try:
-                    usage = psutil.disk_usage(part.mountpoint)
-                    partition_data.append((part.mountpoint, usage.total))
-                    
-                    row = self.disk_table.rowCount()
-                    self.disk_table.insertRow(row)
-                    
-                    self.disk_table.setItem(row, 0, QTableWidgetItem(part.mountpoint))
-                    self.disk_table.setItem(row, 1, QTableWidgetItem(self._fmt(usage.total)))
-                    self.disk_table.setItem(row, 2, QTableWidgetItem(self._fmt(usage.free)))
-                    
-                    # Health
-                    health = self.smart_cache.get(part.mountpoint, "Unknown")
-                    if health == "Unknown" and os.name == 'nt':
-                        health = self.smart_cache.get(part.mountpoint.rstrip('\\'), "Unknown")
-                    
-                    h_item = QTableWidgetItem(health)
-                    if health == "Good": h_item.setForeground(QBrush(QColor("#28a745")))
-                    elif health in ["Warning", "Critical"]: h_item.setForeground(QBrush(QColor("#dc3545")))
-                    self.disk_table.setItem(row, 3, h_item)
-                    
-                    self.disk_table.setItem(row, 4, QTableWidgetItem(part.fstype))
-                    self.disk_table.setItem(row, 5, QTableWidgetItem(f"{usage.percent}%"))
-                    
-                except: continue
-            
-            self.disk_chart.update_data(partition_data)
+                health = self.smart_cache.get(p['mountpoint'], "Unknown")
+                if health == "Unknown" and os.name == 'nt':
+                    health = self.smart_cache.get(p['mountpoint'].rstrip('\\'), "Unknown")
                 
-        except: pass
+                h_item = QTableWidgetItem(health)
+                if health == "Good": h_item.setForeground(QBrush(QColor("#28a745")))
+                elif health in ["Warning", "Critical"]: h_item.setForeground(QBrush(QColor("#dc3545")))
+                self.disk_table.setItem(row, 3, h_item)
+                
+                self.disk_table.setItem(row, 4, QTableWidgetItem(p['fstype']))
+                self.disk_table.setItem(row, 5, QTableWidgetItem(f"{p['percent']}%"))
+                chart_data.append((p['mountpoint'], p['total']))
+            self.disk_chart.update_data(chart_data)
 
-    def _update_top_processes(self):
-        try:
-            # Get top 5 memory consumers
-            procs = sorted(psutil.process_iter(['pid', 'name', 'memory_info']), 
-                           key=lambda p: p.info['memory_info'].rss, reverse=True)[:5]
-            
+        if 'procs' in data:
             self.proc_table.setRowCount(0)
-            for p in procs:
+            for p in data['procs']:
                 r = self.proc_table.rowCount()
                 self.proc_table.insertRow(r)
-                self.proc_table.setItem(r, 0, QTableWidgetItem(str(p.info['pid'])))
-                self.proc_table.setItem(r, 1, QTableWidgetItem(p.info['name']))
-                self.proc_table.setItem(r, 2, QTableWidgetItem(self._fmt(p.info['memory_info'].rss)))
-        except: pass
-
-    def _refresh_smart(self):
-        if time.time() - self.smart_last_check < 60: return
-        self.smart_last_check = time.time()
-        
-        if os.name == 'nt':
-            try:
-                cmd = "wmic volume get DriveLetter,Status"
-                si = subprocess.STARTUPINFO()
-                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                out = subprocess.check_output(cmd, startupinfo=si, shell=False, timeout=2).decode()
-                for line in out.splitlines():
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        self.smart_cache[parts[0]] = "Good" if parts[1] == "OK" else "Warning"
-            except: pass
+                self.proc_table.setItem(r, 0, QTableWidgetItem(str(p['pid'])))
+                self.proc_table.setItem(r, 1, QTableWidgetItem(p['name']))
+                self.proc_table.setItem(r, 2, QTableWidgetItem(self._fmt(p['rss'])))
 
     def clean_temp_files(self):
         temp_dir = os.environ.get('TEMP') or '/tmp'
         reply = QMessageBox.question(self, "Confirm", f"Delete temp files in {temp_dir}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply != QMessageBox.StandardButton.Yes: return
         
+        self.btn_clean.setEnabled(False)
         self.btn_clean.setText("Cleaning...")
-        QApplication.processEvents()
         
-        freed = 0
-        count = 0
-        for root, _, files in os.walk(temp_dir):
-            for i, name in enumerate(files):
-                if i % 50 == 0: QApplication.processEvents()
-                try:
-                    p = os.path.join(root, name)
-                    s = os.path.getsize(p)
-                    os.remove(p)
-                    freed += s
-                    count += 1
-                except: pass
-        
+        self.clean_worker = TempCleanerWorker()
+        self.clean_worker.finished_clean.connect(self.on_clean_finished)
+        self.clean_worker.start()
+
+    def on_clean_finished(self, count, freed):
+        self.btn_clean.setEnabled(True)
         self.btn_clean.setText("Clean Temp")
         QMessageBox.information(self, "Done", f"Deleted {count} files.\nFreed {self._fmt(freed)}.")
 

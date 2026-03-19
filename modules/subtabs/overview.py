@@ -7,8 +7,62 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGroupBox
 )
-from PyQt6.QtCore import Qt, QTimer, QRectF
+from PyQt6.QtCore import Qt, QTimer, QRectF, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QPainter, QPen, QFont, QPalette, QPainterPath, QLinearGradient
+
+class OverviewWorker(QThread):
+    """Background worker to fetch telemetry without freezing the GUI."""
+    data_fetched = pyqtSignal(dict)
+
+    def __init__(self, fetch_db=False):
+        super().__init__()
+        self.fetch_db = fetch_db
+
+    def run(self):
+        data = {}
+        data['cpu'] = psutil.cpu_percent()
+        data['ram'] = psutil.virtual_memory().percent
+        try:
+            data['disk'] = psutil.disk_usage(os.path.abspath(os.sep)).percent
+        except Exception:
+            data['disk'] = 0.0
+            
+        net_up = False
+        try:
+            stats = psutil.net_if_stats()
+            for name, stat in stats.items():
+                if stat.isup and name != "lo" and "Loopback" not in name:
+                    net_up = True
+                    break
+        except Exception:
+            pass
+        data['net_up'] = net_up
+        
+        events = []
+        if self.fetch_db:
+            try:
+                conn = sqlite3.connect("nexashield.db")
+                cursor = conn.cursor()
+                try:
+                    cursor.execute("SELECT timestamp, 'Phishing Detection', url, threat_level FROM phishing_history ORDER BY id DESC LIMIT 5")
+                    for row in cursor.fetchall():
+                        events.append((row[0], row[1], row[2], row[3]))
+                except sqlite3.Error: pass
+                try:
+                    cursor.execute("SELECT timestamp, 'Antivirus', scan_type || ' Scan Completed', threats_found FROM scan_history ORDER BY id DESC LIMIT 5")
+                    for row in cursor.fetchall():
+                        sev = "Critical" if row[3] > 0 else "Safe"
+                        desc = f"{row[2]} - {row[3]} threat(s) found"
+                        events.append((row[0], row[1], desc, sev))
+                except sqlite3.Error: pass
+                conn.close()
+            except Exception:
+                pass
+                
+            events.sort(key=lambda x: x[0], reverse=True)
+            data['events'] = events[:6]
+            
+        self.data_fetched.emit(data)
 
 class OverviewBarChart(QWidget):
     """Draws a real-time bar chart (histogram) for resource visualization."""
@@ -197,31 +251,21 @@ class OverviewWidget(QWidget):
         
         return stat_lbl
 
-    def is_network_up(self):
-        """Check if any primary network interface is up."""
-        try:
-            stats = psutil.net_if_stats()
-            for name, stat in stats.items():
-                if stat.isup and name != "lo" and "Loopback" not in name:
-                    return True
-        except Exception:
-            pass
-        return False
-
     def update_dashboard(self):
-        # --- 1. Update Graphics ---
-        cpu = psutil.cpu_percent()
-        ram = psutil.virtual_memory().percent
-        try:
-            disk = psutil.disk_usage(os.path.abspath(os.sep)).percent
-        except Exception:
-            disk = 0.0
+        if hasattr(self, 'worker') and self.worker.isRunning():
+            return
             
-        self.cpu_hist.update_value(cpu)
-        self.ram_hist.update_value(ram)
-        self.disk_hist.update_value(disk)
+        fetch_db = (self._tick_count % 3 == 0)
+        self.worker = OverviewWorker(fetch_db)
+        self.worker.data_fetched.connect(self.handle_dashboard_data)
+        self.worker.start()
+        self._tick_count += 1
         
-        # --- 2. Update Statuses ---
+    def handle_dashboard_data(self, data):
+        self.cpu_hist.update_value(data['cpu'])
+        self.ram_hist.update_value(data['ram'])
+        self.disk_hist.update_value(data['disk'])
+        
         def set_stat(lbl, val, threshold):
             if val < threshold:
                 lbl.setText("Good")
@@ -230,70 +274,34 @@ class OverviewWidget(QWidget):
                 lbl.setText("Warning")
                 lbl.setStyleSheet("color: #dc3545; font-weight: bold;")
                 
-        set_stat(self.lbl_cpu_stat, cpu, 85)
-        set_stat(self.lbl_ram_stat, ram, 85)
-        set_stat(self.lbl_disk_stat, disk, 90)
+        set_stat(self.lbl_cpu_stat, data['cpu'], 85)
+        set_stat(self.lbl_ram_stat, data['ram'], 85)
+        set_stat(self.lbl_disk_stat, data['disk'], 90)
         
-        if self.is_network_up():
+        if data['net_up']:
             self.lbl_net_stat.setText("Connected")
             self.lbl_net_stat.setStyleSheet("color: #28a745; font-weight: bold;")
         else:
             self.lbl_net_stat.setText("Disconnected")
             self.lbl_net_stat.setStyleSheet("color: #dc3545; font-weight: bold;")
             
-        # --- 3. Update Database Events (Throttle to save Disk I/O) ---
-        if self._tick_count % 3 == 0: # Every ~6 seconds
-            self.update_events()
-            
-        self._tick_count += 1
-
-    def update_events(self):
-        events = []
-        try:
-            conn = sqlite3.connect("nexashield.db")
-            cursor = conn.cursor()
-            
-            # Fetch Phishing Logs
-            try:
-                cursor.execute("SELECT timestamp, 'Phishing Detection', url, threat_level FROM phishing_history ORDER BY id DESC LIMIT 5")
-                for row in cursor.fetchall():
-                    events.append((row[0], row[1], row[2], row[3]))
-            except sqlite3.Error:
-                pass # Table might not exist yet
+        if 'events' in data:
+            events = data['events']
+            self.alerts_table.setRowCount(len(events))
+            for i, (time_str, mod, desc, sev) in enumerate(events):
+                self.alerts_table.setItem(i, 0, QTableWidgetItem(time_str))
+                self.alerts_table.setItem(i, 1, QTableWidgetItem(mod))
+                self.alerts_table.setItem(i, 2, QTableWidgetItem(desc))
                 
-            # Fetch Antivirus Logs
-            try:
-                cursor.execute("SELECT timestamp, 'Antivirus', scan_type || ' Scan Completed', threats_found FROM scan_history ORDER BY id DESC LIMIT 5")
-                for row in cursor.fetchall():
-                    sev = "Critical" if row[3] > 0 else "Safe"
-                    desc = f"{row[2]} - {row[3]} threat(s) found"
-                    events.append((row[0], row[1], desc, sev))
-            except sqlite3.Error:
-                pass # Table might not exist yet
+                sev_item = QTableWidgetItem(sev)
+                if sev in ["High", "Critical", "High Risk"]:
+                    sev_item.setForeground(QBrush(QColor("#dc3545")))
+                elif sev in ["Medium", "Medium Risk", "Warning"]:
+                    sev_item.setForeground(QBrush(QColor("#ffc107")))
+                elif sev in ["Safe", "Low Risk"]:
+                    sev_item.setForeground(QBrush(QColor("#28a745")))
                 
-            conn.close()
-        except Exception:
-            pass
-            
-        # Sort merged events by timestamp and keep the top 6
-        events.sort(key=lambda x: x[0], reverse=True)
-        events = events[:6]
-        
-        self.alerts_table.setRowCount(len(events))
-        for i, (time_str, mod, desc, sev) in enumerate(events):
-            self.alerts_table.setItem(i, 0, QTableWidgetItem(time_str))
-            self.alerts_table.setItem(i, 1, QTableWidgetItem(mod))
-            self.alerts_table.setItem(i, 2, QTableWidgetItem(desc))
-            
-            sev_item = QTableWidgetItem(sev)
-            if sev in ["High", "Critical", "High Risk"]:
-                sev_item.setForeground(QBrush(QColor("#dc3545")))
-            elif sev in ["Medium", "Medium Risk", "Warning"]:
-                sev_item.setForeground(QBrush(QColor("#ffc107")))
-            elif sev in ["Safe", "Low Risk"]:
-                sev_item.setForeground(QBrush(QColor("#28a745")))
-            
-            self.alerts_table.setItem(i, 3, sev_item)
+                self.alerts_table.setItem(i, 3, sev_item)
 
     # Manage timers automatically to save CPU when not visible
     def showEvent(self, event):

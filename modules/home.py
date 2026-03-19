@@ -187,11 +187,16 @@ class HomeWindow(QMainWindow):
         self.content_area = QStackedWidget()
         self.layout.addWidget(self.content_area)
 
-        # Pre-fill stack with placeholders for lazy loading to improve startup performance
-        for _ in self.modules:
-            self.content_area.addWidget(QWidget())
-            
-        self.loaded_tabs = [False] * len(self.modules)
+        # Pre-load all modules to ensure instantaneous tab switching without lag
+        self.content_area.addWidget(SIEMDashboard())
+        self.content_area.addWidget(ProcessMonitorWidget())
+        self.content_area.addWidget(NetworkMonitorWidget())
+        self.content_area.addWidget(MemoryMonitorWidget())
+        self.content_area.addWidget(PhishingDetectorWidget())
+        self.content_area.addWidget(NIDSWidget())
+        self.content_area.addWidget(self.create_placeholder("Firewall"))
+        self.content_area.addWidget(AntivirusWidget())
+        self.content_area.addWidget(CloudSecurityWidget())
 
         # Set default selection
         self.switch_tab(0)
@@ -200,55 +205,7 @@ class HomeWindow(QMainWindow):
         """Switches the stacked widget and updates button styles."""
         for i, btn in enumerate(self.nav_buttons):
             btn.setChecked(i == index)
-
-        # If already loaded, just switch instantly
-        if self.loaded_tabs[index]:
-            self.content_area.setCurrentIndex(index)
-            return
-
-        # Not loaded yet. Show the placeholder as a loading screen
         self.content_area.setCurrentIndex(index)
-        
-        old_widget = self.content_area.widget(index)
-        loading_label = old_widget.findChild(QLabel, "PlaceholderLabel")
-        if loading_label:
-            loading_label.setText(f"Loading {self.modules[index][0]}...\nPlease wait")
-
-        # Defer the actual heavy loading to allow the UI to update the button and show the loading text
-        QTimer.singleShot(50, lambda: self._deferred_load_tab(index))
-
-    def _deferred_load_tab(self, index):
-        self.load_tab_content(index)
-        self.loaded_tabs[index] = True
-        self.content_area.setCurrentIndex(index)
-
-    def load_tab_content(self, index):
-        """Instantiates heavy widgets only when their tab is clicked for the first time."""
-        name, placeholder_text = self.modules[index]
-        old_widget = self.content_area.widget(index)
-        
-        if "SIEM" in name:
-            new_widget = SIEMDashboard()
-        elif "Processes" in name:
-            new_widget = ProcessMonitorWidget()
-        elif "Network" in name:
-            new_widget = NetworkMonitorWidget()
-        elif "Phishing" in name:
-            new_widget = PhishingDetectorWidget()
-        elif "Memory" in name:
-            new_widget = MemoryMonitorWidget()
-        elif "Antivirus" in name:
-            new_widget = AntivirusWidget()
-        elif "NIDS" in name:
-            new_widget = NIDSWidget()
-        elif "Cloud" in name:
-            new_widget = CloudSecurityWidget()
-        else:
-            new_widget = self.create_placeholder(placeholder_text)
-            
-        self.content_area.removeWidget(old_widget)
-        self.content_area.insertWidget(index, new_widget)
-        old_widget.deleteLater()
 
     def refresh_current_tab(self):
         current_index = self.content_area.currentIndex()
