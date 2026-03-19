@@ -37,7 +37,7 @@ class FileDetailsDialog(QDialog):
         layout = QVBoxLayout(self)
         
         title = QLabel("File Information")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #0078d7;")
+        title.setObjectName("DialogTitle")
         layout.addWidget(title)
         
         form_layout = QFormLayout()
@@ -45,19 +45,16 @@ class FileDetailsDialog(QDialog):
         
         for key, value in data.items():
             lbl_key = QLabel(key + ":")
-            lbl_key.setStyleSheet("font-weight: bold;")
+            lbl_key.setObjectName("DialogKey")
             
             lbl_val = QLabel(str(value))
             lbl_val.setWordWrap(True)
             lbl_val.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             
             if key == "Severity":
-                if value in ["High", "Critical"]:
-                    lbl_val.setStyleSheet("color: #dc3545; font-weight: bold;")
-                elif value == "Medium":
-                    lbl_val.setStyleSheet("color: #ffc107; font-weight: bold;")
-                else:
-                    lbl_val.setStyleSheet("color: #28a745; font-weight: bold;")
+                lbl_val.setProperty("severity", value)
+                lbl_val.style().unpolish(lbl_val)
+                lbl_val.style().polish(lbl_val)
             
             form_layout.addRow(lbl_key, lbl_val)
             
@@ -93,15 +90,16 @@ class AntivirusWidget(QWidget):
         # --- Header ---
         header_layout = QHBoxLayout()
         title = QLabel("🛡️ Smart Antivirus Engine")
-        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title.setObjectName("HeaderTitle")
         header_layout.addWidget(title)
         header_layout.addStretch()
         
         self.rt_status = QLabel("⚡ Real-Time: OFF")
-        self.rt_status.setStyleSheet("color: #dc3545; font-weight: bold;")
+        self.rt_status.setObjectName("StatusRed")
         header_layout.addWidget(self.rt_status)
 
         self.rt_btn = QPushButton("✅ Enable Real-Time")
+        self.rt_btn.setObjectName("BtnPrimary")
         self.rt_btn.clicked.connect(self.toggle_realtime)
         if not WATCHDOG_AVAILABLE:
             self.rt_btn.setEnabled(False)
@@ -140,26 +138,26 @@ class AntivirusWidget(QWidget):
         
         btn_row1 = QHBoxLayout()
         btn_quick = QPushButton("⚡ Quick Scan")
-        btn_quick.setStyleSheet("background-color: #0078d7; color: white; padding: 8px;")
+        btn_quick.setObjectName("BtnPrimary")
         btn_quick.clicked.connect(lambda: self.start_scan("Quick"))
         
         btn_full = QPushButton("🔍 Full Scan")
-        btn_full.setStyleSheet("background-color: #6c757d; color: white; padding: 8px;")
+        btn_full.setObjectName("BtnSecondary")
         btn_full.clicked.connect(lambda: self.start_scan("Full"))
         btn_row1.addWidget(btn_quick)
         btn_row1.addWidget(btn_full)
         
         btn_row2 = QHBoxLayout()
         btn_custom = QPushButton("📂 Custom Scan")
-        btn_custom.setStyleSheet("background-color: #28a745; color: white; padding: 8px;")
+        btn_custom.setObjectName("BtnSuccess")
         btn_custom.clicked.connect(self.select_custom_scan)
         
         btn_file = QPushButton("📄 Scan File")
-        btn_file.setStyleSheet("background-color: #6f42c1; color: white; padding: 8px;")
+        btn_file.setObjectName("BtnPurple")
         btn_file.clicked.connect(self.select_file_scan)
         
         btn_update = QPushButton("🔄 Update DB")
-        btn_update.setStyleSheet("background-color: #17a2b8; color: white; padding: 8px;")
+        btn_update.setObjectName("BtnInfo")
         btn_update.clicked.connect(self.update_definitions)
         btn_row2.addWidget(btn_custom)
         btn_row2.addWidget(btn_file)
@@ -176,7 +174,7 @@ class AntivirusWidget(QWidget):
         self.hash_input.setPlaceholderText("🔢 Enter SHA-256 Hash...")
         
         btn_hash = QPushButton("🔎 Check Hash")
-        btn_hash.setStyleSheet("background-color: #6610f2; color: white; padding: 8px;")
+        btn_hash.setObjectName("BtnIndigo")
         btn_hash.clicked.connect(self.check_manual_hash)
         
         hash_layout.addWidget(self.hash_input)
@@ -197,22 +195,7 @@ class AntivirusWidget(QWidget):
         progress_layout = QHBoxLayout()
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(True)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #333;
-                border-radius: 8px;
-                text-align: center;
-                background-color: #1e1e1e;
-                color: white;
-                font-weight: bold;
-                height: 25px;
-            }
-            QProgressBar::chunk {
-                background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 #0078d7, stop:1 #005a9e);
-                border-radius: 6px;
-                margin: 1px;
-            }
-        """)
+        self.progress_bar.setObjectName("AntivirusProgress")
         progress_layout.addWidget(self.progress_bar)
         
         self.pause_btn = QPushButton("⏸️ Pause")
@@ -242,19 +225,19 @@ class AntivirusWidget(QWidget):
         # Action Buttons
         actions = QHBoxLayout()
         btn_select_all = QPushButton("✅ Select All")
-        btn_select_all.setStyleSheet("background-color: #17a2b8; color: white;")
+        btn_select_all.setObjectName("BtnInfo")
         btn_select_all.clicked.connect(self.select_all_threats)
 
         btn_export = QPushButton("📄 Export Report (PDF)")
-        btn_export.setStyleSheet("background-color: #fd7e14; color: white;")
+        btn_export.setObjectName("BtnWarning")
         btn_export.clicked.connect(lambda: self.export_table_to_pdf(self.results_table, "Scan Results", "ScanReport.pdf"))
 
         btn_del = QPushButton("🗑️ Delete Selected")
-        btn_del.setStyleSheet("background-color: #dc3545; color: white;")
+        btn_del.setObjectName("BtnDanger")
         btn_del.clicked.connect(self.delete_threat)
         
         btn_quarantine = QPushButton("☣️ Quarantine Selected")
-        btn_quarantine.setStyleSheet("background-color: #ffc107; color: black;")
+        btn_quarantine.setObjectName("BtnQuarantine")
         btn_quarantine.clicked.connect(self.quarantine_threat)
         
         btn_ignore = QPushButton("👁️ Ignore")
@@ -281,19 +264,19 @@ class AntivirusWidget(QWidget):
 
         btns = QHBoxLayout()
         select_all_btn = QPushButton("✅ Select All")
-        select_all_btn.setStyleSheet("background-color: #17a2b8; color: white;")
+        select_all_btn.setObjectName("BtnInfo")
         select_all_btn.clicked.connect(self.quarantine_table.selectAll)
 
         restore_btn = QPushButton("♻️ Restore Selected")
-        restore_btn.setStyleSheet("background-color: #28a745; color: white;")
+        restore_btn.setObjectName("BtnSuccess")
         restore_btn.clicked.connect(self.restore_selected)
         
         export_btn = QPushButton("📄 Export Report (PDF)")
-        export_btn.setStyleSheet("background-color: #fd7e14; color: white;")
+        export_btn.setObjectName("BtnWarning")
         export_btn.clicked.connect(lambda: self.export_table_to_pdf(self.quarantine_table, "Quarantine History", "QuarantineReport.pdf"))
         
         del_btn = QPushButton("🗑️ Delete Permanently")
-        del_btn.setStyleSheet("background-color: #dc3545; color: white;")
+        del_btn.setObjectName("BtnDanger")
         del_btn.clicked.connect(self.delete_quarantined_selected)
         
         btns.addWidget(select_all_btn)
@@ -311,30 +294,18 @@ class AntivirusWidget(QWidget):
 
         # Title
         title = QLabel("📅 Scheduled Scanning")
-        title.setStyleSheet("font-size: 22px; font-weight: bold; color: #0078d7;")
+        title.setObjectName("SchedTitle")
         layout.addWidget(title)
 
         # Description
         desc = QLabel("Configure NexaShield to automatically scan your system at a specific time daily.")
-        desc.setStyleSheet("color: #888; font-size: 14px;")
+        desc.setObjectName("SchedDesc")
         desc.setWordWrap(True)
         layout.addWidget(desc)
 
         # Settings Container
         container = QFrame()
-        container.setStyleSheet("""
-            QFrame {
-                background-color: #252526;
-                border-radius: 10px;
-                border: 1px solid #3e3e42;
-            }
-            QLabel { color: #ccc; font-size: 14px; border: none; }
-            QCheckBox { color: #ccc; font-size: 14px; spacing: 8px; }
-            QComboBox, QTimeEdit { 
-                background-color: #333; color: white; border: 1px solid #555; 
-                border-radius: 4px; padding: 5px; min-width: 100px;
-            }
-        """)
+        container.setObjectName("ConfigCard")
         form_layout = QFormLayout(container)
         form_layout.setContentsMargins(20, 20, 20, 20)
         form_layout.setSpacing(15)
@@ -355,13 +326,7 @@ class AntivirusWidget(QWidget):
         # Save Button
         save_btn = QPushButton("💾 Save Configuration")
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d7; color: white; 
-                font-weight: bold; padding: 12px; border-radius: 6px; font-size: 14px;
-            }
-            QPushButton:hover { background-color: #0063b1; }
-        """)
+        save_btn.setObjectName("BtnPrimary")
         save_btn.clicked.connect(self.save_schedule)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -382,11 +347,11 @@ class AntivirusWidget(QWidget):
         refresh_btn.clicked.connect(self.load_history)
         
         export_btn = QPushButton("📄 Export Report (PDF)")
-        export_btn.setStyleSheet("background-color: #fd7e14; color: white;")
+        export_btn.setObjectName("BtnWarning")
         export_btn.clicked.connect(lambda: self.export_table_to_pdf(self.history_table, "Scan History", "ScanHistoryReport.pdf"))
         
         clear_btn = QPushButton("🗑️ Clear History")
-        clear_btn.setStyleSheet("background-color: #dc3545; color: white;")
+        clear_btn.setObjectName("BtnDanger")
         clear_btn.clicked.connect(self.clear_history)
         
         h_layout = QHBoxLayout()
@@ -963,7 +928,8 @@ class AntivirusWidget(QWidget):
             self.observer.start()
             
             self.rt_status.setText("⚡ Real-Time: ON")
-            self.rt_status.setStyleSheet("color: #28a745; font-weight: bold;")
+            self.rt_status.setObjectName("StatusGreen")
+            self.rt_status.style().unpolish(self.rt_status); self.rt_status.style().polish(self.rt_status)
             self.rt_btn.setText("❌ Disable Real-Time")
         else:
             # Stop
@@ -972,7 +938,8 @@ class AntivirusWidget(QWidget):
                 self.observer.join()
             
             self.rt_status.setText("⚡ Real-Time: OFF")
-            self.rt_status.setStyleSheet("color: #dc3545; font-weight: bold;")
+            self.rt_status.setObjectName("StatusRed")
+            self.rt_status.style().unpolish(self.rt_status); self.rt_status.style().polish(self.rt_status)
             self.rt_btn.setText("✅ Enable Real-Time")
 
     def on_realtime_event(self, file_path):

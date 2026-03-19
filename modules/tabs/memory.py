@@ -228,23 +228,18 @@ class MetricCard(QFrame):
     def __init__(self, title, value="-", color="#0078d7"):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet("""
-            QFrame { 
-                border-radius: 8px; 
-                border: 1px solid rgba(128, 128, 128, 50);
-                background-color: rgba(0, 0, 0, 20);
-            }
-        """)
+        self.setObjectName("MetricCard")
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         
         self.lbl_title = QLabel(title)
-        self.lbl_title.setStyleSheet("font-size: 11px; font-weight: bold; opacity: 0.7; border: none; background: transparent;")
+        self.lbl_title.setObjectName("MetricTitle")
         layout.addWidget(self.lbl_title)
         
         self.lbl_value = QLabel(value)
-        self.lbl_value.setStyleSheet(f"color: {color}; font-size: 16px; font-weight: bold; border: none; background: transparent;")
+        self.lbl_value.setObjectName("MetricValue")
+        self.lbl_value.setStyleSheet(f"color: {color};") # Keep dynamic chart color matching
         layout.addWidget(self.lbl_value)
         
     def set_value(self, value):
@@ -255,23 +250,17 @@ class InfoCard(QFrame):
     def __init__(self, title, value, icon="ℹ️"):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: rgba(255, 255, 255, 0.05);
-                border-radius: 8px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-        """)
+        self.setObjectName("InfoCard")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
         
         header = QHBoxLayout()
         lbl_icon = QLabel(icon)
-        lbl_icon.setStyleSheet("font-size: 14px; border: none; background: transparent;")
+        lbl_icon.setObjectName("InfoIcon")
         
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold; border: none; background: transparent;")
+        lbl_title.setObjectName("InfoTitle")
         
         header.addWidget(lbl_icon)
         header.addWidget(lbl_title)
@@ -279,7 +268,7 @@ class InfoCard(QFrame):
         layout.addLayout(header)
         
         self.lbl_value = QLabel(value)
-        self.lbl_value.setStyleSheet("color: white; font-size: 13px; font-weight: bold; border: none; background: transparent;")
+        self.lbl_value.setObjectName("InfoValue")
         self.lbl_value.setWordWrap(True)
         layout.addWidget(self.lbl_value)
 
@@ -441,24 +430,16 @@ class MemoryMonitorWidget(QWidget):
         l_ops = QHBoxLayout(grp_ops)
         l_ops.setSpacing(10)
         
-        btn_style = """
-            QPushButton {
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-        """
-        
         self.btn_refresh = QPushButton("Refresh")
-        self.btn_refresh.setStyleSheet(btn_style + "background-color: #0078d7; color: white;")
+        self.btn_refresh.setObjectName("BtnPrimary")
         self.btn_refresh.clicked.connect(self.update_all_stats)
         
         self.btn_clean = QPushButton("Clean Temp")
-        self.btn_clean.setStyleSheet(btn_style + "background-color: #dc3545; color: white;")
+        self.btn_clean.setObjectName("BtnDanger")
         self.btn_clean.clicked.connect(self.clean_temp_files)
         
         self.btn_export = QPushButton("Export PDF")
-        self.btn_export.setStyleSheet(btn_style + "background-color: #fd7e14; color: white;")
+        self.btn_export.setObjectName("BtnWarning")
         self.btn_export.clicked.connect(self.export_pdf)
         
         self.chk_auto = QCheckBox("Auto-Refresh")

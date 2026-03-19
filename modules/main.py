@@ -3,7 +3,7 @@ import os
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPalette, QColor
 from database import DatabaseManager
 from login import LoginWindow
 from signup import SignupWindow
@@ -60,7 +60,7 @@ class NexaShieldApp(QMainWindow):
         self.forgot_screen.theme_toggle.clicked.connect(self.toggle_theme)
         self.home_screen.theme_toggle.clicked.connect(self.toggle_theme)
 
-        self.load_stylesheet()
+        self.apply_theme()
 
     def center(self):
         w, h = 600, 600
@@ -92,25 +92,49 @@ class NexaShieldApp(QMainWindow):
         self.forgot_screen.theme_toggle.setText(icon)
         self.home_screen.theme_toggle.setText(icon)
         
-        self.load_stylesheet()
+        self.apply_theme()
 
-    def load_stylesheet(self):
-        style_path = os.path.join(os.path.dirname(__file__), "style.qss")
+    def apply_theme(self):
+        """Centralized and robust dynamic theming engine using QPalette and global QSS."""
+        palette = QPalette()
+        
+        if self.is_dark_mode:
+            bg = "#1e1e1e"
+            base = "#252526"
+            text = "#ffffff"
+            text_muted = "#aaaaaa"
+            accent = "#0078d7"
+            accent_hover = "#0063b1"
+            border = "#3e3e42"
+        else:
+            bg = "#f3f3f3"
+            base = "#ffffff"
+            text = "#111111"
+            text_muted = "#555555"
+            accent = "#0078d7"
+            accent_hover = "#005a9e"
+            border = "#cccccc"
+
+        # 1. Apply Global Palette (Fixes custom paintEvent charts automatically)
+        palette.setColor(QPalette.ColorRole.Window, QColor(bg))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(text))
+        palette.setColor(QPalette.ColorRole.Base, QColor(base))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(bg))
+        palette.setColor(QPalette.ColorRole.Text, QColor(text))
+        palette.setColor(QPalette.ColorRole.Button, QColor(base))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(text))
+        palette.setColor(QPalette.ColorRole.Link, QColor(accent))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(accent))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
+        QApplication.instance().setPalette(palette)
+
+        # 2. Load Comprehensive QSS Files
+        qss_file = "style.qss" if self.is_dark_mode else "style_light.qss"
+        style_path = os.path.join(os.path.dirname(__file__), qss_file)
+        
         if os.path.exists(style_path):
             with open(style_path, "r") as f:
-                qss = f.read()
-                
-                if not self.is_dark_mode:
-                    # Dynamic Light Mode Patching
-                    qss = qss.replace("#2b2b2b", "#f5f5f5")  # Main BG
-                    qss = qss.replace("#333", "#ffffff")     # Panels/Frames
-                    qss = qss.replace("#222", "#e8e8e8")     # Inputs
-                    qss = qss.replace("#202020", "#e0e0e0")  # Navbar
-                    qss = qss.replace("color: white;", "color: #333;")
-                    qss = qss.replace("color: #fff;", "color: #333;")
-                    qss = qss.replace("color: #aaa;", "color: #555;")
-
-                self.setStyleSheet(qss)
+                self.setStyleSheet(f.read())
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -95,13 +95,7 @@ class LoginSuccessDialog(QDialog):
         layout.setContentsMargins(10, 10, 10, 10)
 
         container = QFrame()
-        container.setStyleSheet("""
-            QFrame {
-                background-color: #1e1e1e;
-                border: 1px solid #333;
-                border-radius: 15px;
-            }
-        """)
+        container.setObjectName("SuccessDialogContainer")
         container_layout = QVBoxLayout(container)
         container_layout.setSpacing(10)
         container_layout.setContentsMargins(20, 20, 20, 20)
@@ -109,15 +103,15 @@ class LoginSuccessDialog(QDialog):
         # Icon
         icon = QLabel("🔓")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setStyleSheet("color: #28a745; font-size: 48px; font-weight: bold; border: none;")
+        icon.setObjectName("SuccessIcon")
         
         # Text
         lbl_title = QLabel("Login Successful")
-        lbl_title.setStyleSheet("color: white; font-size: 18px; font-weight: bold; border: none;")
+        lbl_title.setObjectName("SuccessTitle")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         lbl_msg = QLabel(f"Welcome back,\n{username}")
-        lbl_msg.setStyleSheet("color: #aaaaaa; font-size: 14px; border: none;")
+        lbl_msg.setObjectName("SuccessMsg")
         lbl_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         container_layout.addWidget(icon)

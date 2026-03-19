@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QMessageBox, QFrame, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QRectF
-from PyQt6.QtGui import QColor, QBrush, QPainter, QPainterPath, QLinearGradient, QPen, QFont
+from PyQt6.QtGui import QColor, QBrush, QPainter, QPainterPath, QLinearGradient, QPen, QFont, QPalette
 
 # --- Constants ---
 REFRESH_INTERVAL = 1000  # 1 second for smoother charts
@@ -105,11 +105,11 @@ class NetworkChart(QWidget):
         w = self.width()
         h = self.height()
         
-        # Background
-        painter.fillRect(0, 0, w, h, QColor("#2b2b2b"))
+        # Dynamic Background based on QPalette
+        painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
         # Title & Value
-        painter.setPen(QColor("white"))
+        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
         painter.drawText(10, 20, f"{self.title}: {self.format_bytes(self.current_value)}")
         
         if not self.data:
@@ -168,10 +168,10 @@ class ProtocolPieChart(QWidget):
         h = self.height()
         
         # Background
-        painter.fillRect(0, 0, w, h, QColor("#2b2b2b"))
+        painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
         # Title
-        painter.setPen(QColor("white"))
+        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
         painter.drawText(10, 20, self.title)
 
         # Pie Chart
@@ -196,7 +196,7 @@ class ProtocolPieChart(QWidget):
             painter.drawPie(rect, start_angle + tcp_span, 360 * 16 - tcp_span)
 
         # Legend
-        painter.setPen(QColor("white"))
+        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
         legend_y = h - 10
         painter.drawText(10, legend_y, f"TCP: {self.tcp_count}")
         
@@ -273,15 +273,15 @@ class NetworkMonitorWidget(QWidget):
         
         # Info Card
         info_panel = QFrame()
-        info_panel.setStyleSheet("background-color: #2b2b2b; border-radius: 5px;")
+        info_panel.setObjectName("CardContainer")
         info_layout = QVBoxLayout(info_panel)
         
         self.lbl_interface_name = QLabel("🌐 Interface: -")
-        self.lbl_interface_name.setStyleSheet("color: #aaa; font-weight: bold;")
+        self.lbl_interface_name.setStyleSheet("font-weight: bold;")
         info_layout.addWidget(self.lbl_interface_name)
         
         self.lbl_hostname = QLabel(f"💻 Host: {socket.gethostname()}")
-        self.lbl_hostname.setStyleSheet("color: white; font-weight: bold; margin-bottom: 5px;")
+        self.lbl_hostname.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
         info_layout.addWidget(self.lbl_hostname)
 
         self.lbl_ip = QLabel("📍 IP: -")
@@ -291,10 +291,10 @@ class NetworkMonitorWidget(QWidget):
         self.lbl_sent = QLabel("⬆️ Sent: -")
         self.lbl_recv = QLabel("⬇️ Recv: -")
         
-        self.lbl_ip.setStyleSheet("color: white; font-size: 11pt;")
-        self.lbl_mac.setStyleSheet("color: #ccc; font-size: 9pt;")
-        self.lbl_netmask.setStyleSheet("color: #ccc; font-size: 9pt;")
-        self.lbl_broadcast.setStyleSheet("color: #ccc; font-size: 9pt;")
+        self.lbl_ip.setStyleSheet("font-size: 11pt;")
+        self.lbl_mac.setStyleSheet("font-size: 9pt;")
+        self.lbl_netmask.setStyleSheet("font-size: 9pt;")
+        self.lbl_broadcast.setStyleSheet("font-size: 9pt;")
         self.lbl_sent.setStyleSheet("color: #28a745;")
         self.lbl_recv.setStyleSheet("color: #0078d7;")
         

@@ -1,3 +1,6 @@
+QWidget { color: #111111; font-family: "Segoe UI", Arial, sans-serif; font-size: 10pt; }
+QMainWindow, QDialog, QStackedWidget { background-color: #f3f3f3; }
+
 QMainWindow {
     background-color: #f4f4f9;
     color: #333;
@@ -112,3 +115,100 @@ QToolButton#ThemeToggleBtn {
     font-size: 20px;
     color: #f39c12; /* Sun Color */
 }
+
+/* Reusable Card Containers */
+#CardContainer, #SIEMSidebar, #ResultFrame {
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #cccccc;
+}
+
+/* Tables */
+QTableWidget {
+    background-color: #ffffff;
+    alternate-background-color: #f3f3f3;
+    border: 1px solid #cccccc;
+    border-radius: 6px;
+    selection-background-color: #0078d7;
+    selection-color: white;
+    gridline-color: #cccccc;
+}
+QHeaderView::section {
+    background-color: #ffffff;
+    border: none;
+    border-bottom: 2px solid #0078d7;
+    padding: 5px;
+    font-weight: bold;
+    color: #111111;
+}
+
+/* Progress Bars */
+QProgressBar { border: 1px solid #cccccc; border-radius: 6px; text-align: center; background-color: #ffffff; color: #111111; font-weight: bold; }
+QProgressBar::chunk { background-color: #0078d7; border-radius: 5px; }
+
+/* SIEM Sidebar Menus */
+#SIEMSidebar QPushButton { text-align: left; padding: 12px 20px; border: none; color: #555555; font-size: 14px; background-color: transparent; border-left: 3px solid transparent; border-radius: 0px; }
+#SIEMSidebar QPushButton:hover { background-color: #f3f3f3; color: #111111; }
+#SIEMSidebar QPushButton:checked { background-color: #f3f3f3; color: #0078d7; font-weight: bold; border-left: 3px solid #0078d7; }
+
+/* Dialog Customizations */
+#SuccessDialogContainer { background-color: #ffffff; border: 1px solid #ccc; border-radius: 15px; }
+#SuccessIcon { color: #28a745; font-size: 48px; font-weight: bold; }
+#LogoutIcon { color: #0078d7; font-size: 48px; font-weight: bold; }
+#SuccessTitle { color: #111; font-size: 18px; font-weight: bold; }
+#SuccessMsg { color: #555; font-size: 14px; }
+
+/* Action Buttons */
+#BtnPrimary { background-color: #0078d7; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnSecondary { background-color: #6c757d; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnSuccess { background-color: #28a745; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnDanger { background-color: #dc3545; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnWarning { background-color: #fd7e14; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnInfo { background-color: #17a2b8; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnPurple { background-color: #6f42c1; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnIndigo { background-color: #6610f2; color: white; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnQuarantine { background-color: #ffc107; color: black; padding: 8px; border-radius: 4px; font-weight: bold; }
+#BtnPrimary:hover { background-color: #005a9e; }
+#BtnDanger:hover { background-color: #c82333; }
+
+/* Labels and Texts */
+#StatusBarLabel { color: #555; }
+#InfoLabelBold { font-weight: bold; }
+#InfoLabelBoldMb { font-weight: bold; margin-bottom: 5px; }
+#LabelSuccess { color: #28a745; }
+#LabelPrimary { color: #0078d7; }
+#HeaderTitle { font-size: 18px; font-weight: bold; color: #111; }
+#ReasonLabel { color: #555; font-style: italic; margin-top: 5px; }
+#DetailsLabel { color: #333; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 5px; font-size: 11px; }
+
+/* Dynamic UI Triggers */
+#StatusRed { color: #dc3545; font-weight: bold; }
+#StatusGreen { color: #28a745; font-weight: bold; }
+QLabel[severity="Critical"], QLabel[severity="High"] { color: #dc3545; font-weight: bold; }
+QLabel[severity="Medium"] { color: #ffc107; font-weight: bold; }
+QLabel[severity="Low"], QLabel[severity="Safe"] { color: #28a745; font-weight: bold; }
+QProgressBar#StrengthBar[strength="weak"]::chunk { background-color: #dc3545; }
+QProgressBar#StrengthBar[strength="medium"]::chunk { background-color: #ffc107; }
+QProgressBar#StrengthBar[strength="strong"]::chunk { background-color: #28a745; }
+QLabel#ThreatLabel[risk="Safe"] { color: #28a745; font-weight: bold; font-size: 18pt; }
+QLabel#ThreatLabel[risk="LowRisk"] { color: #17a2b8; font-weight: bold; font-size: 18pt; }
+QLabel#ThreatLabel[risk="MediumRisk"] { color: #ffc107; font-weight: bold; font-size: 18pt; }
+QLabel#ThreatLabel[risk="HighRisk"] { color: #dc3545; font-weight: bold; font-size: 18pt; }
+QProgressBar#ScoreBar[risk="Safe"]::chunk { background-color: #28a745; }
+QProgressBar#ScoreBar[risk="LowRisk"]::chunk { background-color: #17a2b8; }
+QProgressBar#ScoreBar[risk="MediumRisk"]::chunk { background-color: #ffc107; }
+QProgressBar#ScoreBar[risk="HighRisk"]::chunk { background-color: #dc3545; }
+
+/* Module Components */
+#ConfigCard { background-color: #ffffff; border-radius: 10px; border: 1px solid #cccccc; }
+#ConfigCard QLabel { color: #333; font-size: 14px; border: none; }
+#ConfigCard QCheckBox { color: #333; font-size: 14px; spacing: 8px; }
+#ConfigCard QComboBox, #ConfigCard QTimeEdit { background-color: #f3f3f3; color: #111; border: 1px solid #ccc; border-radius: 4px; padding: 5px; min-width: 100px; }
+#InfoCard { background-color: rgba(0, 0, 0, 0.05); border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.1); }
+#InfoIcon { font-size: 14px; border: none; background: transparent; }
+#InfoTitle { color: #555; font-size: 11px; font-weight: bold; border: none; background: transparent; opacity: 0.7; }
+#InfoValue { color: #111; font-size: 13px; font-weight: bold; border: none; background: transparent; }
+#MetricCard { border-radius: 8px; border: 1px solid rgba(128, 128, 128, 50); background-color: rgba(0, 0, 0, 0.05); }
+#MetricTitle { font-size: 11px; font-weight: bold; opacity: 0.7; border: none; background: transparent; color: #333; }
+#MetricValue { font-size: 16px; font-weight: bold; border: none; background: transparent; }
+#SidebarTitle { color: #555; font-weight: bold; padding-left: 20px; margin-bottom: 10px; text-transform: uppercase; font-size: 11px; }

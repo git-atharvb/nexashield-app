@@ -46,7 +46,7 @@ class SignupWindow(AuthStyle):
         self.frame_layout.addWidget(self.strength_bar)
 
         self.strength_label = QLabel("Password Strength: None")
-        self.strength_label.setStyleSheet("font-size: 10px; color: #888; margin-bottom: 10px;")
+        self.strength_label.setObjectName("StrengthLabel")
         self.frame_layout.addWidget(self.strength_label)
 
         self.signup_btn = QPushButton("✅ Sign Up")
@@ -73,20 +73,25 @@ class SignupWindow(AuthStyle):
         self.strength_bar.setValue(score * 25)
 
         if score < 2:
-            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #dc3545; }") # Red
+            self.strength_bar.setProperty("strength", "weak")
             self.strength_label.setText("Weak (Need 8+ chars, numbers, symbols)")
-            self.strength_label.setStyleSheet("color: #dc3545; font-size: 10px;")
+            self.strength_label.setProperty("strength", "weak")
             self.is_password_strong = False
         elif score < 4:
-            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #ffc107; }") # Yellow
+            self.strength_bar.setProperty("strength", "medium")
             self.strength_label.setText("Medium (Add special chars & uppercase)")
-            self.strength_label.setStyleSheet("color: #ffc107; font-size: 10px;")
+            self.strength_label.setProperty("strength", "medium")
             self.is_password_strong = False
         else:
-            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #28a745; }") # Green
+            self.strength_bar.setProperty("strength", "strong")
             self.strength_label.setText("Strong")
-            self.strength_label.setStyleSheet("color: #28a745; font-size: 10px;")
+            self.strength_label.setProperty("strength", "strong")
             self.is_password_strong = True
+            
+        self.strength_bar.style().unpolish(self.strength_bar)
+        self.strength_bar.style().polish(self.strength_bar)
+        self.strength_label.style().unpolish(self.strength_label)
+        self.strength_label.style().polish(self.strength_label)
 
     def handle_signup(self):
         username = self.username_input.text()

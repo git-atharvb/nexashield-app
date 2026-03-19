@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QFrame, QProgressBar, QCheckBox
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QPen, QTextDocument
+from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QPen, QTextDocument, QPalette
 from PyQt6.QtPrintSupport import QPrinter
 
 # --- Constants ---
@@ -61,10 +61,10 @@ class ResourceChart(QWidget):
         h = self.height()
         
         # Background
-        painter.fillRect(0, 0, w, h, QColor("#2b2b2b"))
+        painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
         # Title & Value
-        painter.setPen(QColor("white"))
+        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
         painter.drawText(10, 20, f"{self.title}: {self.current_value:.1f}%")
         
         if not self.data:
@@ -164,20 +164,22 @@ class ProcessMonitorWidget(QWidget):
         control_bar.addWidget(self.btn_resume)
 
         self.btn_kill = QPushButton("💀 End Task")
-        self.btn_kill.setObjectName("DangerButton") # For red styling in QSS
-        self.btn_kill.setStyleSheet("background-color: #dc3545; color: white; font-weight: bold;")
+        self.btn_kill.setObjectName("BtnDanger") 
         self.btn_kill.clicked.connect(self.kill_process)
         control_bar.addWidget(self.btn_kill)
 
         self.btn_refresh = QPushButton("🔄 Refresh")
+        self.btn_refresh.setObjectName("BtnPrimary")
         self.btn_refresh.clicked.connect(self.refresh_data)
         control_bar.addWidget(self.btn_refresh)
 
         self.btn_export = QPushButton("📄 Export CSV")
+        self.btn_export.setObjectName("BtnInfo")
         self.btn_export.clicked.connect(self.export_csv)
         control_bar.addWidget(self.btn_export)
 
         self.btn_export_pdf = QPushButton("📑 Export PDF")
+        self.btn_export_pdf.setObjectName("BtnWarning")
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         control_bar.addWidget(self.btn_export_pdf)
 
@@ -225,7 +227,7 @@ class ProcessMonitorWidget(QWidget):
 
         # Status Bar / Footer
         self.status_label = QLabel("✅ Ready")
-        self.status_label.setStyleSheet("color: #888;")
+        self.status_label.setObjectName("StatusBarLabel")
         layout.addWidget(self.status_label)
 
     def clear_search(self):

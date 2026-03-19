@@ -28,31 +28,6 @@ class SIEMDashboard(QWidget):
         self.sidebar = QFrame()
         self.sidebar.setObjectName("SIEMSidebar")
         self.sidebar.setFixedWidth(200)
-        self.sidebar.setStyleSheet("""
-            #SIEMSidebar {
-                background-color: #252526;
-                border-right: 1px solid #333;
-            }
-            QPushButton {
-                text-align: left;
-                padding: 12px 20px;
-                border: none;
-                color: #ccc;
-                font-size: 14px;
-                background-color: transparent;
-                border-left: 3px solid transparent;
-            }
-            QPushButton:hover {
-                background-color: #2a2d2e;
-                color: white;
-            }
-            QPushButton:checked {
-                background-color: #1e1e1e;
-                color: #0078d7;
-                font-weight: bold;
-                border-left: 3px solid #0078d7;
-            }
-        """)
         
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 20, 0, 20)
@@ -60,7 +35,7 @@ class SIEMDashboard(QWidget):
 
         # Sidebar Title
         title_lbl = QLabel("SIEM Controls")
-        title_lbl.setStyleSheet("color: #666; font-weight: bold; padding-left: 20px; margin-bottom: 10px; text-transform: uppercase; font-size: 11px;")
+        title_lbl.setObjectName("SidebarTitle")
         sidebar_layout.addWidget(title_lbl)
 
         # Menu Buttons
