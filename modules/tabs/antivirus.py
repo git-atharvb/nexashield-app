@@ -362,6 +362,17 @@ class AntivirusWidget(QWidget):
 
     # --- Logic ---
 
+    def reset_ui(self):
+        """Clears inputs and resets the scanner state."""
+        self.hash_input.clear()
+        self.results_table.setRowCount(0)
+        self.status_label.setText("ℹ️ Status: Idle - Drag & Drop files here to scan")
+        self.progress_bar.setValue(0)
+        self.progress_bar.setRange(0, 100)
+        
+        if self.scan_thread and self.scan_thread.isRunning():
+            self.stop_scan()
+
     def check_manual_hash(self):
         text = self.hash_input.text().strip()
         if not text:

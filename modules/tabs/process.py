@@ -230,6 +230,12 @@ class ProcessMonitorWidget(QWidget):
         self.status_label.setObjectName("StatusBarLabel")
         layout.addWidget(self.status_label)
 
+    def reset_ui(self):
+        """Clears filters and triggers a data refresh."""
+        self.search_input.clear()
+        self.chk_select_all.setChecked(False)
+        self.refresh_data()
+
     def clear_search(self):
         self.search_input.clear()
 
@@ -308,6 +314,9 @@ class ProcessMonitorWidget(QWidget):
             # Update Font
             font = item.font()
             if font.bold() != bold:
+                # Prevent Qt warning for uninitialized font sizes (-1)
+                if font.pointSize() <= 0 and font.pixelSize() <= 0:
+                    font.setPointSize(10) 
                 font.setBold(bold)
                 item.setFont(font)
 
@@ -506,8 +515,3 @@ class ProcessMonitorWidget(QWidget):
             
         except Exception as e:
             QMessageBox.critical(self, "Export Error", str(e))
-
-    def get_bold_font(self):
-        f = self.font()
-        f.setBold(True)
-        return f

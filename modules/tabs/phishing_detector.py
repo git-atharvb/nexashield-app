@@ -453,6 +453,13 @@ class PhishingDetectorWidget(QWidget):
         # Load initial history
         self.load_history()
 
+    def reset_ui(self):
+        """Clears all inputs and results to start fresh."""
+        self.url_input.clear()
+        self.result_frame.hide()
+        self.progress_bar.hide()
+        self.progress_bar.setValue(0)
+
     def start_scan(self):
         url = self.url_input.text().strip()
         if not url:

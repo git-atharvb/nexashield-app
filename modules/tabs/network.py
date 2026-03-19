@@ -347,6 +347,13 @@ class NetworkMonitorWidget(QWidget):
         self.status_label.setStyleSheet("color: #888;")
         layout.addWidget(self.status_label)
 
+    def reset_ui(self):
+        """Clears filters and triggers a data refresh."""
+        self.search_input.clear()
+        self.combo_interface.setCurrentIndex(0)
+        self.combo_protocol.setCurrentIndex(0)
+        self.refresh_data()
+
     def showEvent(self, event):
         """Start updating when the tab becomes visible."""
         super().showEvent(event)

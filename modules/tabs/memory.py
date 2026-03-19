@@ -514,6 +514,10 @@ class MemoryMonitorWidget(QWidget):
 
     # --- Logic ---
 
+    def reset_ui(self):
+        """Triggers a data refresh."""
+        self.update_all_stats()
+
     def update_all_stats(self):
         self._update_memory()
         self._update_storage()

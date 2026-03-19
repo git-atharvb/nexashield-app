@@ -68,6 +68,45 @@ class LogoutSuccessDialog(QDialog):
         self.fade_in.start()
         QTimer.singleShot(1500, self.fade_out.start)
 
+class RefreshToastDialog(QDialog):
+    """A non-blocking toast notification for refresh actions."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.ToolTip)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedSize(260, 60)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        container = QFrame()
+        container.setObjectName("CardContainer") 
+        container_layout = QHBoxLayout(container)
+        
+        icon = QLabel("✅")
+        icon.setStyleSheet("color: #28a745; font-size: 18px; background: transparent; border: none;")
+        lbl_msg = QLabel("Refreshed page successfully")
+        lbl_msg.setStyleSheet("font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        
+        container_layout.addWidget(icon)
+        container_layout.addWidget(lbl_msg)
+        layout.addWidget(container)
+
+        self.setWindowOpacity(0.0)
+        self.anim = QPropertyAnimation(self, b"windowOpacity")
+        self.anim.setDuration(300)
+        self.anim.setStartValue(0.0)
+        self.anim.setEndValue(1.0)
+        self.anim.start()
+        
+        QTimer.singleShot(1000, self.fade_out)
+
+    def fade_out(self):
+        self.anim.setStartValue(1.0)
+        self.anim.setEndValue(0.0)
+        self.anim.finished.connect(self.accept)
+        self.anim.start()
+
 class HomeWindow(QMainWindow):
     logout_requested = pyqtSignal()
 
@@ -119,6 +158,14 @@ class HomeWindow(QMainWindow):
             btn.clicked.connect(lambda checked, idx=i: self.switch_tab(idx))
             nav_layout.addWidget(btn)
             self.nav_buttons.append(btn)
+
+        # Refresh Button
+        self.refresh_btn = QPushButton("🔄")
+        self.refresh_btn.setFixedSize(40, 40)
+        self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.refresh_btn.setObjectName("ThemeToggle") # Reuse transparent styling
+        self.refresh_btn.clicked.connect(self.refresh_current_tab)
+        nav_layout.addWidget(self.refresh_btn)
 
         # Theme Toggle
         self.theme_toggle = QPushButton("☀️")
@@ -199,6 +246,26 @@ class HomeWindow(QMainWindow):
         self.content_area.removeWidget(old_widget)
         self.content_area.insertWidget(index, new_widget)
         old_widget.deleteLater()
+
+    def refresh_current_tab(self):
+        current_index = self.content_area.currentIndex()
+        current_widget = self.content_area.widget(current_index)
+        
+        # Trigger reset/refresh if supported by the active module
+        if hasattr(current_widget, "reset_ui"):
+            current_widget.reset_ui()
+        elif hasattr(current_widget, "refresh_data"):
+            current_widget.refresh_data()
+        elif hasattr(current_widget, "update_all_stats"):
+            current_widget.update_all_stats()
+            
+        # Show Toast Notification
+        self._toast = RefreshToastDialog(self)
+        parent_geom = self.geometry()
+        x = parent_geom.x() + (parent_geom.width() - self._toast.width()) // 2
+        y = parent_geom.y() + 80 # Display slightly below the navbar
+        self._toast.move(x, y)
+        self._toast.show()
 
     def create_placeholder(self, text):
         widget = QWidget()
