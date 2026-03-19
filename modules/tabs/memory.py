@@ -3,6 +3,7 @@ import sys
 import time
 import psutil
 import datetime
+import math
 import subprocess
 import platform
 from collections import deque
@@ -10,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
     QFrame, QCheckBox, QFileDialog, QMessageBox, QSizePolicy, 
-    QAbstractItemView, QApplication, QGroupBox, QTabWidget
+    QAbstractItemView, QApplication, QGroupBox, QTabWidget, QToolTip
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QBuffer, QIODevice, QByteArray, QSize
 from PyQt6.QtGui import (
@@ -68,14 +69,15 @@ class ModernChart(QWidget):
 
         # Background (Transparent/Handled by parent Card)
         
-        # Title & Value
-        painter.setPen(text_color)
-        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-        painter.drawText(10, 20, f"{self.title}")
+        top_pad = 40
+        chart_h = h - top_pad
         
-        painter.setPen(line_color)
-        painter.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        painter.drawText(w - 100, 20, 90, 20, Qt.AlignmentFlag.AlignRight, self._format_val(self.current_value))
+        grid_col = QColor(128, 128, 128, 40)
+        # 1. Draw Grid Lines (underneath)
+        painter.setPen(QPen(grid_col, 1, Qt.PenStyle.DashLine))
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            painter.drawLine(0, int(y_line), w, int(y_line))
 
         if not self.data: return
 
@@ -83,10 +85,6 @@ class ModernChart(QWidget):
         path = QPainterPath()
         step_x = w / (self.data.maxlen - 1)
         scale = max(self.max_value, 1.0)
-        
-        # Chart area padding
-        top_pad = 30
-        chart_h = h - top_pad
         
         path.moveTo(0, h - (self.data[0] / scale * chart_h))
         
@@ -111,6 +109,27 @@ class ModernChart(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path)
 
+        # Leading Dot
+        painter.setBrush(line_color)
+        painter.drawEllipse(int(w - 4), int(y - 4), 8, 8)
+        
+        # 3. Draw Text & Labels (On Top)
+        painter.setFont(QFont("Segoe UI", 8))
+        painter.setPen(QColor(128, 128, 128, 200))
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            val = self.max_value * (1 - i*0.5) if i != 2 else 0
+            painter.drawText(10, int(y_line) - 4, self._format_val(val))
+            
+        # Title & Value
+        painter.setPen(text_color)
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        painter.drawText(10, 25, f"{self.title}")
+        
+        painter.setPen(line_color)
+        painter.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        painter.drawText(w - 100, 25, 90, 20, Qt.AlignmentFlag.AlignRight, self._format_val(self.current_value))
+
 class DonutChart(QWidget):
     """Draws a donut chart for percentage visualization."""
     def __init__(self, title, color="#28a745"):
@@ -131,9 +150,9 @@ class DonutChart(QWidget):
         w, h = self.width(), self.height()
         
         # Layout calculations to prevent overlap
-        header_h = 25
+        header_h = 30
         size = min(w, h - header_h) - 10
-        rect = QRectF((w - size)/2, header_h + 5, size, size)
+        rect = QRectF((w - size)/2, header_h + 10, size, size)
 
         # Title
         painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
@@ -166,6 +185,7 @@ class DiskPartitionPieChart(QWidget):
             QColor("#0078d7"), QColor("#28a745"), QColor("#ffc107"), 
             QColor("#dc3545"), QColor("#6f42c1"), QColor("#17a2b8")
         ]
+        self.setMouseTracking(True)
 
     def update_data(self, partition_data):
         # partition_data: list of (name, size_bytes)
@@ -191,9 +211,11 @@ class DiskPartitionPieChart(QWidget):
         if not self.partitions:
             return
 
-        # Pie Area
-        size = min(w, h - 40) - 10
-        rect = QRectF((w - size) / 2, 25, size, size)
+        # Donut Area
+        top_pad = 35
+        bottom_pad = 25
+        size = min(w, h - top_pad - bottom_pad) - 10
+        rect = QRectF((w - size) / 2, top_pad, size, size)
         
         total = sum(p[1] for p in self.partitions)
         start_angle = 90 * 16
@@ -204,6 +226,12 @@ class DiskPartitionPieChart(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawPie(rect, start_angle, span)
             start_angle += span
+            
+        # Inner Donut Hole
+        painter.setBrush(self.palette().color(QPalette.ColorRole.Window))
+        inner_size = size * 0.55
+        inner_rect = QRectF((w - inner_size) / 2, top_pad + (size - inner_size) / 2, inner_size, inner_size)
+        painter.drawEllipse(inner_rect)
 
         # Legend (Simple text at bottom)
         legend_y = h - 10
@@ -222,6 +250,51 @@ class DiskPartitionPieChart(QWidget):
             fm = painter.fontMetrics()
             x_cursor += 12 + fm.horizontalAdvance(text) + 10
             if x_cursor > w - 20: break # Stop if overflow
+
+    def _format_bytes(self, size):
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if size < 1024.0:
+                return f"{size:.2f} {unit}"
+            size /= 1024.0
+        return f"{size:.2f} PB"
+
+    def mouseMoveEvent(self, event):
+        if not self.partitions:
+            return super().mouseMoveEvent(event)
+            
+        pos = event.pos()
+        w, h = self.width(), self.height()
+        top_pad = 35
+        bottom_pad = 25
+        size = min(w, h - top_pad - bottom_pad) - 10
+        rect = QRectF((w - size) / 2, top_pad, size, size)
+        
+        center = rect.center()
+        dx = pos.x() - center.x()
+        dy = pos.y() - center.y()
+        distance = math.hypot(dx, dy)
+        
+        inner_radius = (size * 0.55) / 2
+        outer_radius = size / 2
+        
+        if inner_radius <= distance <= outer_radius:
+            angle = math.degrees(math.atan2(-dy, dx))
+            if angle < 0:
+                angle += 360
+            mapped_angle = (angle - 90) % 360
+            
+            total = sum(p[1] for p in self.partitions)
+            if total > 0:
+                current_span = 0
+                for name, val, color in self.partitions:
+                    span = (val / total) * 360
+                    if current_span <= mapped_angle <= current_span + span:
+                        QToolTip.showText(event.globalPosition().toPoint(), f"{name}\nCapacity: {self._format_bytes(val)}\nShare: {(val/total)*100:.1f}%", self)
+                        return
+                    current_span += span
+                    
+        QToolTip.hideText()
+        super().mouseMoveEvent(event)
 
 class MetricCard(QFrame):
     """A styled card displaying a single metric."""
@@ -325,10 +398,16 @@ class DataFlowDiagram(QWidget):
         x_ram = w * 0.5
         x_disk = w * 0.8
         
-        # Draw Connections
-        painter.setPen(QPen(text_col, 2, Qt.PenStyle.DashLine))
-        painter.drawLine(int(x_cpu + r), int(y_mid), int(x_ram - r), int(y_mid))
-        painter.drawLine(int(x_ram + r), int(y_mid), int(x_disk - r), int(y_mid))
+        # Draw Smooth Curved Connections
+        painter.setPen(QPen(QColor(128, 128, 128, 100), 3, Qt.PenStyle.SolidLine))
+        path = QPainterPath()
+        path.moveTo(x_cpu + r, y_mid)
+        # Curve to RAM
+        path.cubicTo(x_cpu + r + 40, y_mid - 30, x_ram - r - 40, y_mid - 30, x_ram - r, y_mid)
+        # Curve to Disk
+        path.moveTo(x_ram + r, y_mid)
+        path.cubicTo(x_ram + r + 40, y_mid + 30, x_disk - r - 40, y_mid + 30, x_disk - r, y_mid)
+        painter.drawPath(path)
         
         draw_node(x_cpu, "CPU", int(self.cpu_val), col_cpu)
         draw_node(x_ram, "RAM", int(self.ram_val), col_ram)

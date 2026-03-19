@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QFrame, QProgressBar, QCheckBox
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QPen, QTextDocument, QPalette
+from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QPen, QTextDocument, QPalette, QFont
 from PyQt6.QtPrintSupport import QPrinter
 
 # --- Constants ---
@@ -63,23 +63,29 @@ class ResourceChart(QWidget):
         # Background
         painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
-        # Title & Value
-        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
-        painter.drawText(10, 20, f"{self.title}: {self.current_value:.1f}%")
+        top_pad = 40
+        chart_h = h - top_pad
+        
+        grid_col = QColor(128, 128, 128, 40)
+        
+        # 1. Draw Grid Lines (Underneath graph)
+        painter.setPen(QPen(grid_col, 1, Qt.PenStyle.DashLine))
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            painter.drawLine(0, int(y_line), w, int(y_line))
         
         if not self.data:
             return
             
+        # 2. Draw Graph Path & Gradient
         path = QPainterPath()
-        # Calculate x step based on maxlen to ensure consistent width
         step_x = w / (self.data.maxlen - 1)
         
-        # Start point (y is inverted)
-        path.moveTo(0, h - (self.data[0] / 100.0 * h))
+        path.moveTo(0, h - (self.data[0] / 100.0 * chart_h))
         
         for i, val in enumerate(self.data):
             x = i * step_x
-            y = h - (val / 100.0 * h)
+            y = h - (val / 100.0 * chart_h)
             path.lineTo(x, y)
             
         # Draw Line
@@ -91,7 +97,7 @@ class ResourceChart(QWidget):
         path.lineTo(0, h)
         path.closeSubpath()
         
-        grad = QLinearGradient(0, 0, 0, h)
+        grad = QLinearGradient(0, top_pad, 0, h)
         c = self.line_color
         grad.setColorAt(0, QColor(c.red(), c.green(), c.blue(), 100))
         grad.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 0))
@@ -99,6 +105,25 @@ class ResourceChart(QWidget):
         painter.setBrush(grad)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path)
+
+        # Draw Leading Dot
+        painter.setBrush(self.line_color)
+        painter.drawEllipse(int(w - 4), int(y - 4), 8, 8)
+
+        # 3. Draw Text & Labels (On top of gradient so it never overlaps)
+        text_col = self.palette().color(QPalette.ColorRole.WindowText)
+        label_col = QColor(128, 128, 128, 200)
+        
+        painter.setFont(QFont("Segoe UI", 8))
+        painter.setPen(label_col)
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            lbl = ["100%", "50%", "0%"][i]
+            painter.drawText(w - 35, int(y_line) - 4, lbl)
+            
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        painter.drawText(10, 25, f"{self.title}: {self.current_value:.1f}%")
 
 class ProcessMonitorWidget(QWidget):
     def __init__(self):

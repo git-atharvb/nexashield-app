@@ -1,0 +1,70 @@
+=========================================================
+         NEXASHIELD PROTOCOL TESTING GUIDE
+=========================================================
+
+IMPORTANT PREREQUISITE:
+To capture all network traffic accurately (especially ICMP and low-level system processes), 
+you must run NexaShield with Administrator privileges (Windows) or as Root (sudo on Mac/Linux).
+
+---------------------------------------------------------
+1. Testing HTTP (Port 80 / 8080)
+---------------------------------------------------------
+How to trigger:
+Open your web browser and navigate to a website that does not use SSL (HTTPS). 
+Example: http://neverssl.com
+
+What to look for:
+In the NexaShield Network tab, look for connections from your browser (e.g., chrome.exe) labeled as "HTTP (TCP)".
+
+---------------------------------------------------------
+2. Testing HTTPS (Port 443 / 8443)
+---------------------------------------------------------
+How to trigger:
+Open your web browser and navigate to any secure website.
+Example: https://www.google.com or https://github.com
+
+What to look for:
+Look for connections from your browser labeled as "HTTPS (TCP)".
+
+---------------------------------------------------------
+3. Testing DNS (Port 53)
+---------------------------------------------------------
+How to trigger:
+Open your Command Prompt (Windows) or Terminal (Mac/Linux) and force a domain name resolution:
+Command: nslookup example.com
+
+What to look for:
+You will briefly see a "DNS (UDP)" or "DNS (TCP)" connection appear in the table.
+
+---------------------------------------------------------
+4. Testing ICMP (Ping / Raw Sockets)
+---------------------------------------------------------
+How to trigger:
+Open your Command Prompt or Terminal and send a continuous ping to a public server.
+Windows Command: ping -t 8.8.8.8
+Mac/Linux Command: ping 8.8.8.8
+
+What to look for:
+Select "ICMP" from the Protocol dropdown filter in NexaShield. You should see the ping process listed.
+
+---------------------------------------------------------
+5. Testing POP3 (Port 110 / 995)
+---------------------------------------------------------
+How to trigger:
+If you don't have an email client to hit "Receive", you can simulate a POP3 connection using Python.
+Open a new terminal and run:
+python -c "import socket; s=socket.socket(); s.connect(('pop.gmail.com', 995)); print('Connected!'); input('Press Enter to close...')"
+
+What to look for:
+While the terminal says "Connected!", look in NexaShield for your Python process labeled as "POP3 (TCP)".
+
+---------------------------------------------------------
+6. Testing SMTP (Port 25 / 465 / 587)
+---------------------------------------------------------
+How to trigger:
+Similar to POP3, you can simulate an outgoing email server connection using Python.
+Open a new terminal and run:
+python -c "import socket; s=socket.socket(); s.connect(('smtp.gmail.com', 587)); print('Connected!'); input('Press Enter to close...')"
+
+What to look for:
+While the terminal says "Connected!", look in NexaShield for your Python process labeled as "SMTP (TCP)".

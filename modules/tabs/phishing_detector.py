@@ -5,13 +5,14 @@ import re
 import os
 import socket
 import json
+import math
 from urllib.parse import urlparse
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QFileDialog, QFrame, QGroupBox, QProgressBar,
-    QAbstractItemView
+    QAbstractItemView, QToolTip
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QRectF
 from PyQt6.QtGui import QColor, QBrush, QTextDocument, QFont, QPainter, QPen, QPalette
@@ -257,6 +258,7 @@ class PhishingStatsChart(QWidget):
         super().__init__()
         self.setMinimumSize(150, 150)
         self.stats = {"Safe": 0, "Low Risk": 0, "Medium Risk": 0, "High Risk": 0}
+        self.setMouseTracking(True)
 
     def update_stats(self, stats):
         self.stats = stats
@@ -283,10 +285,17 @@ class PhishingStatsChart(QWidget):
             "Medium Risk": "#ffc107",
             "High Risk": "#dc3545"
         }
+        
+        # Title
+        text_col = self.palette().color(QPalette.ColorRole.WindowText)
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        painter.drawText(0, 10, w, 20, Qt.AlignmentFlag.AlignCenter, "Scan Distribution")
 
-        # Draw Pie
-        size = min(w, h) - 20
-        rect = QRectF((w - size) / 2, 10, size, size)
+        # Draw Donut
+        top_pad = 35
+        size = min(w, h - top_pad) - 10
+        rect = QRectF((w - size) / 2, top_pad, size, size)
         start_angle = 90 * 16
         
         for label, count in self.stats.items():
@@ -296,6 +305,53 @@ class PhishingStatsChart(QWidget):
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawPie(rect, start_angle, span)
                 start_angle += span
+                
+        # Inner Donut Hole
+        painter.setBrush(self.palette().color(QPalette.ColorRole.Window))
+        inner_size = size * 0.65
+        inner_rect = QRectF((w - inner_size) / 2, top_pad + (size - inner_size) / 2, inner_size, inner_size)
+        painter.drawEllipse(inner_rect)
+        
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        painter.drawText(inner_rect, Qt.AlignmentFlag.AlignCenter, f"Total\n{total}")
+
+    def mouseMoveEvent(self, event):
+        total = sum(self.stats.values())
+        if total == 0:
+            return super().mouseMoveEvent(event)
+            
+        pos = event.pos()
+        w, h = self.width(), self.height()
+        top_pad = 35
+        size = min(w, h - top_pad) - 10
+        rect = QRectF((w - size) / 2, top_pad, size, size)
+        
+        center = rect.center()
+        dx = pos.x() - center.x()
+        dy = pos.y() - center.y()
+        distance = math.hypot(dx, dy)
+        
+        inner_radius = (size * 0.65) / 2
+        outer_radius = size / 2
+        
+        if inner_radius <= distance <= outer_radius:
+            angle = math.degrees(math.atan2(-dy, dx))
+            if angle < 0:
+                angle += 360
+            mapped_angle = (angle - 90) % 360
+            
+            current_span = 0
+            for label, count in self.stats.items():
+                if count > 0:
+                    span = (count / total) * 360
+                    if current_span <= mapped_angle <= current_span + span:
+                        QToolTip.showText(event.globalPosition().toPoint(), f"Threat Level: {label}\nUrls Scanned: {count}\nShare: {(count/total)*100:.1f}%", self)
+                        return
+                    current_span += span
+                    
+        QToolTip.hideText()
+        super().mouseMoveEvent(event)
 
 class PhishingDetectorWidget(QWidget):
     def __init__(self):

@@ -1,11 +1,12 @@
 import psutil
 import socket
 import time
+import math
 from collections import deque
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLineEdit, QLabel, QHeaderView, QComboBox, QGroupBox,
-    QAbstractItemView, QMessageBox, QFrame, QGridLayout
+    QAbstractItemView, QMessageBox, QFrame, QGridLayout, QToolTip
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QRectF
 from PyQt6.QtGui import QColor, QBrush, QPainter, QPainterPath, QLinearGradient, QPen, QFont, QPalette
@@ -31,9 +32,14 @@ class NetworkWorker(QThread):
         # 1. Fetch Connections
         connections = []
         try:
-            # kind='inet' fetches both IPv4 and IPv6, TCP and UDP
-            for conn in psutil.net_connections(kind='inet'):
+            # kind='all' fetches TCP, UDP, UNIX, and RAW (ICMP) sockets
+            for conn in psutil.net_connections(kind='all'):
                 try:
+                    # Ignore non-IP sockets (UNIX/PACKET) to prevent attribute parse errors
+                    if (hasattr(socket, 'AF_UNIX') and conn.family == socket.AF_UNIX) or \
+                       (hasattr(socket, 'AF_PACKET') and conn.family == socket.AF_PACKET):
+                        continue
+                        
                     # Resolve process name if PID exists
                     proc_name = pid_names.get(conn.pid, "-") if conn.pid else "-"
                     
@@ -108,9 +114,17 @@ class NetworkChart(QWidget):
         # Dynamic Background based on QPalette
         painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
-        # Title & Value
-        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
-        painter.drawText(10, 20, f"{self.title}: {self.format_bytes(self.current_value)}")
+        top_pad = 40
+        chart_h = h - top_pad
+        
+        grid_col = QColor(128, 128, 128, 40)
+        scale_max = max(self.max_val, 1.0)
+        
+        # 1. Draw Grid Lines
+        painter.setPen(QPen(grid_col, 1, Qt.PenStyle.DashLine))
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            painter.drawLine(0, int(y_line), w, int(y_line))
         
         if not self.data:
             return
@@ -118,26 +132,21 @@ class NetworkChart(QWidget):
         path = QPainterPath()
         step_x = w / (self.data.maxlen - 1)
         
-        # Calculate points
-        # y = h - (value / max_val * h)
-        # Ensure we don't divide by zero
-        scale_max = max(self.max_val, 1.0)
-        
-        path.moveTo(0, h - (self.data[0] / scale_max * h))
+        path.moveTo(0, h - (self.data[0] / scale_max * chart_h))
         for i, val in enumerate(self.data):
             x = i * step_x
-            y = h - (val / scale_max * h)
+            y = h - (val / scale_max * chart_h)
             path.lineTo(x, y)
             
         painter.setPen(QPen(self.line_color, 2))
         painter.drawPath(path)
         
-        # Gradient fill
+        # Fill Gradient
         path.lineTo(w, h)
         path.lineTo(0, h)
         path.closeSubpath()
         
-        grad = QLinearGradient(0, 0, 0, h)
+        grad = QLinearGradient(0, top_pad, 0, h)
         c = self.line_color
         grad.setColorAt(0, QColor(c.red(), c.green(), c.blue(), 100))
         grad.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 0))
@@ -145,19 +154,47 @@ class NetworkChart(QWidget):
         painter.setBrush(grad)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path)
+        
+        # Leading Dot
+        painter.setBrush(self.line_color)
+        painter.drawEllipse(int(w - 4), int(y - 4), 8, 8)
+        
+        # 3. Draw Text & Labels on top
+        text_col = self.palette().color(QPalette.ColorRole.WindowText)
+        painter.setFont(QFont("Segoe UI", 8))
+        painter.setPen(QColor(128, 128, 128, 200))
+        for i in range(3):
+            y_line = top_pad + i * (chart_h / 2)
+            lbl = [self.format_bytes(scale_max), self.format_bytes(scale_max / 2), "0 B/s"][i]
+            painter.drawText(w - 65, int(y_line) - 4, lbl)
+            
+        # Title & Value
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        painter.drawText(10, 25, f"{self.title}: {self.format_bytes(self.current_value)}")
 
 class ProtocolPieChart(QWidget):
-    """Visualizes the distribution of TCP vs UDP connections."""
+    """Visualizes the distribution of network protocols."""
     def __init__(self):
         super().__init__()
         self.setMinimumSize(150, 150)
-        self.tcp_count = 0
-        self.udp_count = 0
+        self.counts = {"TCP": 0, "UDP": 0, "HTTP": 0, "HTTPS": 0, "DNS": 0, "POP3": 0, "SMTP": 0, "ICMP": 0, "Other": 0}
+        self.colors = {
+            "TCP": QColor("#0078d7"),   # Blue
+            "UDP": QColor("#ffc107"),   # Yellow
+            "HTTP": QColor("#28a745"),  # Green
+            "HTTPS": QColor("#6f42c1"), # Purple
+            "DNS": QColor("#17a2b8"),   # Cyan
+            "POP3": QColor("#e83e8c"),  # Pink
+            "SMTP": QColor("#fd7e14"),  # Orange
+            "ICMP": QColor("#20c997"),  # Teal
+            "Other": QColor("#6c757d")  # Gray
+        }
         self.title = "🥧 Protocol Distribution"
+        self.setMouseTracking(True)
 
-    def update_counts(self, tcp, udp):
-        self.tcp_count = tcp
-        self.udp_count = udp
+    def update_counts(self, counts_dict):
+        self.counts = counts_dict
         self.update()
 
     def paintEvent(self, event):
@@ -170,41 +207,95 @@ class ProtocolPieChart(QWidget):
         # Background
         painter.fillRect(0, 0, w, h, self.palette().color(QPalette.ColorRole.Window))
         
-        # Title
-        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
-        painter.drawText(10, 20, self.title)
-
-        # Pie Chart
-        size = min(w, h) - 40
-        rect = QRectF((w - size) / 2, 30, size, size)
+        text_col = self.palette().color(QPalette.ColorRole.WindowText)
         
-        total = self.tcp_count + self.udp_count
+        # Title
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        painter.drawText(10, 25, self.title)
+
+        # Donut Chart
+        size = min(w, h - 70) - 10 # Allow room for title and multi-line legend
+        rect = QRectF((w - size) / 2, 35, size, size)
+        
+        total = sum(self.counts.values())
         if total == 0:
             painter.setBrush(QColor("#444"))
             painter.drawEllipse(rect)
         else:
             start_angle = 90 * 16
-            tcp_span = int((self.tcp_count / total) * 360 * 16)
+            for proto, count in self.counts.items():
+                if count > 0:
+                    span = int((count / total) * 360 * 16)
+                    painter.setBrush(self.colors[proto])
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.drawPie(rect, start_angle, span)
+                    start_angle += span
             
-            # TCP (Blue)
-            painter.setBrush(QColor("#0078d7"))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawPie(rect, start_angle, tcp_span)
-            
-            # UDP (Orange)
-            painter.setBrush(QColor("#ffc107"))
-            painter.drawPie(rect, start_angle + tcp_span, 360 * 16 - tcp_span)
-
-        # Legend
-        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
-        legend_y = h - 10
-        painter.drawText(10, legend_y, f"TCP: {self.tcp_count}")
+        # Inner Donut Hole
+        painter.setBrush(self.palette().color(QPalette.ColorRole.Window))
+        inner_size = size * 0.65
+        inner_rect = QRectF((w - inner_size) / 2, 35 + (size - inner_size) / 2, inner_size, inner_size)
+        painter.drawEllipse(inner_rect)
         
-        # Draw UDP text aligned right
-        udp_text = f"UDP: {self.udp_count}"
-        fm = painter.fontMetrics()
-        text_w = fm.horizontalAdvance(udp_text)
-        painter.drawText(w - text_w - 10, legend_y, udp_text)
+        # Center Text
+        painter.setPen(text_col)
+        painter.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        painter.drawText(inner_rect, Qt.AlignmentFlag.AlignCenter, f"Total\n{total}")
+
+        # Legend (Dynamic Wrapping)
+        painter.setFont(QFont("Segoe UI", 9))
+        legend_y = h - 25
+        x_cursor = 10
+        for proto, count in self.counts.items():
+            if count == 0: continue
+            painter.setBrush(self.colors[proto])
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(x_cursor, legend_y - 8, 8, 8)
+            painter.setPen(text_col)
+            text = f"{proto}: {count}"
+            painter.drawText(x_cursor + 12, legend_y, text)
+            fm = painter.fontMetrics()
+            x_cursor += 12 + fm.horizontalAdvance(text) + 10
+            if x_cursor > w - 50:
+                x_cursor = 10
+                legend_y += 15
+
+    def mouseMoveEvent(self, event):
+        total = sum(self.counts.values())
+        if total == 0:
+            return super().mouseMoveEvent(event)
+            
+        pos = event.pos()
+        w, h = self.width(), self.height()
+        size = min(w, h - 70) - 10
+        rect = QRectF((w - size) / 2, 35, size, size)
+        
+        center = rect.center()
+        dx = pos.x() - center.x()
+        dy = pos.y() - center.y()
+        distance = math.hypot(dx, dy)
+        
+        inner_radius = (size * 0.65) / 2
+        outer_radius = size / 2
+        
+        if inner_radius <= distance <= outer_radius:
+            angle = math.degrees(math.atan2(-dy, dx))
+            if angle < 0:
+                angle += 360
+            mapped_angle = (angle - 90) % 360
+            
+            current_span = 0
+            for proto, count in self.counts.items():
+                if count > 0:
+                    span = (count / total) * 360
+                    if current_span <= mapped_angle <= current_span + span:
+                        QToolTip.showText(event.globalPosition().toPoint(), f"{proto}\nConnections: {count}\nShare: {(count/total)*100:.1f}%", self)
+                        return
+                    current_span += span
+                
+        QToolTip.hideText()
+        super().mouseMoveEvent(event)
 
 class NetworkMonitorWidget(QWidget):
     def __init__(self):
@@ -246,7 +337,7 @@ class NetworkMonitorWidget(QWidget):
 
         # Protocol Selector
         self.combo_protocol = QComboBox()
-        self.combo_protocol.addItems(["All", "TCP", "UDP"])
+        self.combo_protocol.addItems(["All", "TCP", "UDP", "HTTP", "HTTPS", "DNS", "POP3", "SMTP", "ICMP"])
         self.combo_protocol.currentTextChanged.connect(self.handle_protocol_change)
         control_bar.addWidget(QLabel("🔌 Protocol:"))
         control_bar.addWidget(self.combo_protocol)
@@ -377,10 +468,34 @@ class NetworkMonitorWidget(QWidget):
         self.status_label.setText(f"Last updated: {time.strftime('%H:%M:%S')}")
         
         # Update Pie Chart
+        counts = {"TCP": 0, "UDP": 0, "HTTP": 0, "HTTPS": 0, "DNS": 0, "POP3": 0, "SMTP": 0, "ICMP": 0, "Other": 0}
         connections = data.get('connections', [])
-        tcp = sum(1 for c in connections if c['type'] == socket.SOCK_STREAM)
-        udp = sum(1 for c in connections if c['type'] == socket.SOCK_DGRAM)
-        self.pie_chart.update_counts(tcp, udp)
+        
+        for c in connections:
+            lport = getattr(c['laddr'], 'port', 0) if c['laddr'] else 0
+            rport = getattr(c['raddr'], 'port', 0) if c['raddr'] else 0
+            ctype = c['type']
+            
+            if 80 in (lport, rport) or 8080 in (lport, rport):
+                counts["HTTP"] += 1
+            elif 443 in (lport, rport) or 8443 in (lport, rport):
+                counts["HTTPS"] += 1
+            elif 53 in (lport, rport):
+                counts["DNS"] += 1
+            elif 110 in (lport, rport) or 995 in (lport, rport):
+                counts["POP3"] += 1
+            elif 25 in (lport, rport) or 465 in (lport, rport) or 587 in (lport, rport):
+                counts["SMTP"] += 1
+            elif hasattr(socket, 'SOCK_RAW') and ctype == socket.SOCK_RAW:
+                counts["ICMP"] += 1
+            elif ctype == socket.SOCK_STREAM:
+                counts["TCP"] += 1
+            elif ctype == socket.SOCK_DGRAM:
+                counts["UDP"] += 1
+            else:
+                counts["Other"] += 1
+                
+        self.pie_chart.update_counts(counts)
 
     def update_interface_stats(self, data):
         io_counters = data['io_counters']
@@ -476,15 +591,42 @@ class NetworkMonitorWidget(QWidget):
             update_conn_item(row, 1, str(conn['pid']))
             
             # 2: Protocol
-            proto = "TCP" if conn['type'] == socket.SOCK_STREAM else "UDP"
+            lport = getattr(conn['laddr'], 'port', 0) if conn['laddr'] else 0
+            rport = getattr(conn['raddr'], 'port', 0) if conn['raddr'] else 0
+            
+            if hasattr(socket, 'SOCK_RAW') and conn['type'] == socket.SOCK_RAW:
+                base_proto = "ICMP"
+            else:
+                base_proto = "TCP" if conn['type'] == socket.SOCK_STREAM else ("UDP" if conn['type'] == socket.SOCK_DGRAM else "RAW")
+            
+            proto = base_proto
+            if 80 in (lport, rport) or 8080 in (lport, rport):
+                proto = f"HTTP ({base_proto})"
+            elif 443 in (lport, rport) or 8443 in (lport, rport):
+                proto = f"HTTPS ({base_proto})"
+            elif 53 in (lport, rport):
+                proto = f"DNS ({base_proto})"
+            elif 110 in (lport, rport) or 995 in (lport, rport):
+                proto = f"POP3 ({base_proto})"
+            elif 25 in (lport, rport) or 465 in (lport, rport) or 587 in (lport, rport):
+                proto = f"SMTP ({base_proto})"
+                
             update_conn_item(row, 2, proto)
             
             # 3: Local Address
-            laddr = f"{conn['laddr'].ip}:{conn['laddr'].port}" if conn['laddr'] else "-"
+            lip = getattr(conn['laddr'], 'ip', '-') if conn['laddr'] else "-"
+            if base_proto == "ICMP" or not lport:
+                laddr = str(lip)
+            else:
+                laddr = f"{lip}:{lport}"
             update_conn_item(row, 3, laddr)
             
             # 4: Remote Address
-            raddr = f"{conn['raddr'].ip}:{conn['raddr'].port}" if conn['raddr'] else "-"
+            rip = getattr(conn['raddr'], 'ip', '-') if conn['raddr'] else "-"
+            if base_proto == "ICMP" or not rport:
+                raddr = str(rip)
+            else:
+                raddr = f"{rip}:{rport}"
             update_conn_item(row, 4, raddr)
             
             # 5: Status
@@ -511,19 +653,52 @@ class NetworkMonitorWidget(QWidget):
 
         for conn in connections:
             # 1. Protocol Filter
-            conn_proto = "TCP" if conn['type'] == socket.SOCK_STREAM else "UDP"
-            if self.protocol_filter != "All" and self.protocol_filter != conn_proto:
-                continue
+            lport = getattr(conn['laddr'], 'port', 0) if conn['laddr'] else 0
+            rport = getattr(conn['raddr'], 'port', 0) if conn['raddr'] else 0
+            
+            if hasattr(socket, 'SOCK_RAW') and conn['type'] == socket.SOCK_RAW:
+                base_proto = "ICMP"
+            else:
+                base_proto = "TCP" if conn['type'] == socket.SOCK_STREAM else ("UDP" if conn['type'] == socket.SOCK_DGRAM else "RAW")
+            
+            conn_proto = base_proto
+            if 80 in (lport, rport) or 8080 in (lport, rport):
+                conn_proto = "HTTP"
+            elif 443 in (lport, rport) or 8443 in (lport, rport):
+                conn_proto = "HTTPS"
+            elif 53 in (lport, rport):
+                conn_proto = "DNS"
+            elif 110 in (lport, rport) or 995 in (lport, rport):
+                conn_proto = "POP3"
+            elif 25 in (lport, rport) or 465 in (lport, rport) or 587 in (lport, rport):
+                conn_proto = "SMTP"
+
+            if self.protocol_filter != "All":
+                if self.protocol_filter in ["TCP", "UDP"]:
+                    if base_proto != self.protocol_filter: continue
+                else:
+                    if conn_proto != self.protocol_filter: continue
 
             # 2. Interface Filter (Match Local IP)
+            lip = getattr(conn['laddr'], 'ip', None) if conn['laddr'] else None
             if selected_ip:
-                if not conn['laddr'] or conn['laddr'].ip != selected_ip:
+                if not lip or lip != selected_ip:
                     continue
 
             # 3. Search Filter
             if search_lower:
-                laddr_str = f"{conn['laddr'].ip}:{conn['laddr'].port}" if conn['laddr'] else ""
-                raddr_str = f"{conn['raddr'].ip}:{conn['raddr'].port}" if conn['raddr'] else ""
+                rip = getattr(conn['raddr'], 'ip', '') if conn['raddr'] else ""
+                
+                if base_proto == "ICMP" or not lport:
+                    laddr_str = str(lip or "")
+                else:
+                    laddr_str = f"{lip}:{lport}"
+                    
+                if base_proto == "ICMP" or not rport:
+                    raddr_str = str(rip or "")
+                else:
+                    raddr_str = f"{rip}:{rport}"
+                    
                 search_terms = [
                     str(conn['pid']), 
                     conn['proc_name'].lower(), 
