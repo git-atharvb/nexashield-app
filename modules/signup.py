@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar
 from PyQt6.QtCore import Qt, pyqtSignal, QRegularExpression
 from PyQt6.QtGui import QRegularExpressionValidator
-from ui_components import AuthStyle, PasswordInput
+from ui_components import AuthStyle, PasswordInput, GlowingLogo
 
 class SignupWindow(AuthStyle):
     switch_to_login = pyqtSignal()
@@ -11,6 +11,12 @@ class SignupWindow(AuthStyle):
         super().__init__()
         self.db = db
         self.is_password_strong = False
+
+        # --- Logo Section ---
+        self.frame_layout.addSpacing(-30) 
+        self.logo = GlowingLogo() 
+        self.frame_layout.addWidget(self.logo, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.frame_layout.addSpacing(20)
 
         title = QLabel("Create Account")
         title.setObjectName("SignupTitle")

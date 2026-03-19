@@ -1,7 +1,7 @@
 import random
 from PyQt6.QtWidgets import QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
-from ui_components import AuthStyle, PasswordInput
+from ui_components import AuthStyle, PasswordInput, GlowingLogo
 
 class ForgotPasswordWindow(AuthStyle):
     switch_to_login = pyqtSignal()
@@ -11,6 +11,10 @@ class ForgotPasswordWindow(AuthStyle):
         self.db = db
         self.generated_otp = None
         self.current_username = None
+
+        # --- Logo Section ---
+        self.logo = GlowingLogo()
+        self.frame_layout.addWidget(self.logo, alignment=Qt.AlignmentFlag.AlignCenter)
 
         title = QLabel("Reset Password")
         title.setObjectName("LoginTitle") # Reuse login title style

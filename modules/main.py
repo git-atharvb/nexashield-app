@@ -15,15 +15,16 @@ from home import HomeWindow
 class NexaShieldApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        
         self.is_dark_mode = True
         self.setWindowTitle("NexaShield Cybersecurity Suite")
         
         # Set Window Icon
-        icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "nexa.png")
         self.setWindowIcon(QIcon(icon_path))
 
+        self.setMinimumSize(500, 650) # Taller ratio to perfectly fit auth forms without scrollbars
         self.center()
-        self.setMinimumSize(600, 600)
 
         self.db = DatabaseManager()
 
@@ -63,7 +64,7 @@ class NexaShieldApp(QMainWindow):
         self.apply_theme()
 
     def center(self):
-        w, h = 600, 600
+        w, h = 550, 650
         screen = QApplication.primaryScreen().availableGeometry()
         x = screen.x() + (screen.width() - w) // 2
         y = screen.y() + (screen.height() - h) // 2
@@ -79,7 +80,7 @@ class NexaShieldApp(QMainWindow):
         self.login_screen.clear_inputs()
         self.stack.setCurrentIndex(0)
         self.showNormal()
-        self.resize(600, 600)
+        self.resize(550, 650)
         self.center()
 
     def toggle_theme(self):
@@ -138,6 +139,12 @@ class NexaShieldApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    
+    # Enforce a strictly positive global point size before ANY widgets are created to silence Qt warnings
+    default_font = app.font()
+    default_font.setPointSize(10)
+    app.setFont(default_font)
+    
     window = NexaShieldApp()
     window.show()
     sys.exit(app.exec())

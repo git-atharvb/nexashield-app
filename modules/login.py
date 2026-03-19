@@ -1,87 +1,13 @@
 import json
 import os
 from PyQt6.QtWidgets import (
-    QLabel, QLineEdit, QPushButton, QMessageBox, QWidget, QDialog, QVBoxLayout, QFrame
+    QLabel, QLineEdit, QPushButton, QMessageBox, QWidget, QDialog, QVBoxLayout, QHBoxLayout,
+    QFrame, QGraphicsDropShadowEffect, QStackedWidget
 )
-from PyQt6.QtGui import QPainter, QPainterPath, QColor, QLinearGradient, QPen
+from PyQt6.QtGui import QPainter, QPainterPath, QColor, QLinearGradient, QPen, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
-from ui_components import AuthStyle, PasswordInput
+from ui_components import AuthStyle, PasswordInput, GlowingLogo
 from google_auth import GoogleAuthWorker
-
-class NexaLogo(QWidget):
-    """Custom painted logo for NexaShield."""
-    def __init__(self):
-        super().__init__()
-        self.setFixedSize(120, 120)
-        
-        # Animation state
-        self.node_alpha = 150
-        self.alpha_step = 4
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.animate_nodes)
-        self.timer.start(50)
-
-    def animate_nodes(self):
-        self.node_alpha += self.alpha_step
-        if self.node_alpha >= 200:
-            self.node_alpha = 200
-            self.alpha_step = -4
-        elif self.node_alpha <= 60:
-            self.node_alpha = 60
-            self.alpha_step = 4
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Scale drawing to fit new size (Base canvas 160x160)
-        scale = self.width() / 160.0
-        painter.scale(scale, scale)
-        
-        # --- Draw Shield ---
-        path = QPainterPath()
-        path.moveTo(30, 30)
-        path.lineTo(130, 30)
-        # Curve down to bottom point (80, 150)
-        path.cubicTo(130, 30, 130, 110, 80, 150)
-        path.cubicTo(30, 110, 30, 30, 30, 30)
-        
-        gradient = QLinearGradient(80, 30, 80, 150)
-        gradient.setColorAt(0, QColor("#0078d7"))  # Nexa Blue
-        gradient.setColorAt(1, QColor("#004a80"))  # Darker Blue
-        
-        painter.setPen(QPen(QColor("#003355"), 2))
-        painter.setBrush(gradient)
-        painter.drawPath(path)
-        
-        # --- Draw Circuit Lines (Decoration) ---
-        painter.setPen(QPen(QColor(255, 255, 255, 50), 2)) # Semi-transparent white
-        painter.drawLine(80, 150, 80, 110)
-        painter.drawLine(80, 110, 50, 90)
-        painter.drawLine(80, 110, 110, 90)
-        
-        painter.setBrush(QColor(255, 255, 255, self.node_alpha))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(77, 107, 6, 6) # Center node
-        painter.drawEllipse(47, 87, 6, 6)  # Left node
-        painter.drawEllipse(107, 87, 6, 6) # Right node
-
-        # --- Draw Lock ---
-        # Shackle
-        painter.setPen(QPen(QColor("#eeeeee"), 6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawArc(60, 45, 40, 40, 0, 180 * 16)
-        
-        # Lock Body
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("white"))
-        painter.drawRoundedRect(55, 65, 50, 40, 6, 6)
-        
-        # Keyhole
-        painter.setBrush(QColor("#005a9e"))
-        painter.drawEllipse(76, 80, 8, 8)
-        painter.drawRoundedRect(78, 80, 4, 15, 2, 2)
 
 class LoginSuccessDialog(QDialog):
     """A custom, modern dialog for successful login."""
@@ -145,10 +71,10 @@ class LoadingSpinner(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(40, 40)
+
         self.angle = 0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.rotate)
-        self.hide()
 
     def rotate(self):
         self.angle = (self.angle + 45) % 360
@@ -183,9 +109,8 @@ class LoginWindow(AuthStyle):
         self.db = db
 
         # --- Logo Section ---
-        self.logo = NexaLogo()
+        self.logo = GlowingLogo()
         self.frame_layout.addWidget(self.logo, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.frame_layout.addSpacing(10)
 
         title = QLabel("NexaShield Login")
         title.setObjectName("LoginTitle")
@@ -200,13 +125,21 @@ class LoginWindow(AuthStyle):
         self.password_input = PasswordInput("Password")
         self.frame_layout.addWidget(self.password_input)
 
+        # Using Stacked Widget to swap Button & Spinner cleanly without gaps
+        self.login_stack = QStackedWidget()
+        
         self.login_btn = QPushButton("🔓 Login")
         self.login_btn.clicked.connect(self.handle_login)
-        self.frame_layout.addWidget(self.login_btn)
-
-        # Spinner (Hidden by default)
+        self.login_stack.addWidget(self.login_btn)
+        
+        self.spinner_container = QWidget()
+        spinner_layout = QVBoxLayout(self.spinner_container)
+        spinner_layout.setContentsMargins(0, 0, 0, 0)
         self.spinner = LoadingSpinner()
-        self.frame_layout.addWidget(self.spinner, alignment=Qt.AlignmentFlag.AlignCenter)
+        spinner_layout.addWidget(self.spinner, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.login_stack.addWidget(self.spinner_container)
+        
+        self.frame_layout.addWidget(self.login_stack)
 
         self.google_btn = QPushButton("🌐 Sign in with Google")
         self.google_btn.setObjectName("GoogleButton")
@@ -224,9 +157,7 @@ class LoginWindow(AuthStyle):
         self.frame_layout.addWidget(self.signup_link)
 
     def handle_login(self):
-        self.login_btn.setEnabled(False)
-        self.login_btn.setText("Verifying...")
-        self.spinner.show()
+        self.login_stack.setCurrentIndex(1) # Show Spinner
         
         # Simulate processing delay for animation
         QTimer.singleShot(1500, self.perform_login)
@@ -235,9 +166,7 @@ class LoginWindow(AuthStyle):
         username = self.username_input.text()
         password = self.password_input.text()
 
-        self.spinner.hide()
-        self.login_btn.setEnabled(True)
-        self.login_btn.setText("🔓 Login")
+        self.login_stack.setCurrentIndex(0) # Show Button
 
         if self.db.verify_user(username, password):
             dlg = LoginSuccessDialog(self, username)
