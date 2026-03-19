@@ -15,6 +15,9 @@ NexaShield is a cutting-edge cybersecurity defense system designed to provide ro
 5.  [Modules and Components](#5-modules-and-components)
     *   [Antivirus Module](#antivirus-module)
     *   [Phishing Detection Module](#phishing-detection-module)
+    *   [Network Intrusion Detection (NIDS)](#network-intrusion-detection-nids)
+    *   [Process & Memory Management](#process--memory-management)
+    *   [SIEM Dashboard](#siem-dashboard)
 6.  [Machine Learning Models and Datasets](#6-machine-learning-models-and-datasets)
     *   [Antivirus Model Details](#antivirus-model-details)
     *   [Phishing Detection Model Details](#phishing-detection-model-details)
@@ -28,54 +31,50 @@ NexaShield is a cutting-edge cybersecurity defense system designed to provide ro
 
 ## 1. 🚀 Introduction
 
-In an increasingly interconnected world, digital security is paramount. NexaShield addresses this critical need by offering an intelligent and adaptive defense system. It integrates multiple threat detection mechanisms, primarily focusing on identifying and mitigating phishing attempts and malware infections, ensuring a safer digital environment for users. Our goal is to empower users and organizations with proactive defense against evolving cyber threats.
+In an increasingly interconnected world, digital security is paramount. NexaShield addresses this critical need by offering an intelligent, adaptive desktop defense system. It integrates multiple threat detection mechanisms—ranging from ML-based phishing and malware detection to real-time network packet sniffing and active OS-level firewall prevention. Our goal is to empower users and organizations with a proactive, unified threat management suite against evolving cyber threats.
 
 ## 2. ✨ Features
 
 *   **Real-time Phishing Detection** 🎣: Analyzes URLs and web content to identify and block phishing attempts. This feature helps protect users from fraudulent websites designed to steal credentials or sensitive information by scrutinizing various URL characteristics and page content.
 *   **Advanced Antivirus Scanning** 🦠: Detects and neutralizes various types of malware, including viruses, worms, and Trojans. It employs sophisticated machine learning techniques to identify malicious code and behavioral patterns in files and processes.
 *   **Machine Learning Powered** 🧠: Utilizes sophisticated ML models for accurate and adaptive threat identification. Our models are continuously trained on vast and diverse datasets to recognize new and emerging threats, reducing reliance on static signatures.
+*   **Network Intrusion Detection & Prevention (NIDS/IPS)** 🚨: Live packet capture and Deep Packet Inspection (DPI) powered by Scapy. Includes Snort-style rules to identify network scans, payloads, and automatically block malicious IPs at the OS firewall level.
+*   **Real-time Process & Memory Monitoring** ⚡: Track, suspend, or terminate suspicious system processes. Monitor live CPU/RAM utilization, inspect disk partitions, check S.M.A.R.T health status, and easily clean temporary files.
+*   **SIEM Dashboard** 📊: A centralized command center summarizing device health, active telemetry (animated histograms), and aggregating recent security events into a single actionable feed.
 *   **Modular Design** 🧩: Allows for easy expansion and integration of new security features. This architecture ensures scalability, maintainability, and the ability to rapidly adapt to new threat landscapes and incorporate additional security modules.
-*   **User-friendly Interface** 🖥️: (Assumed) Provides an intuitive way for users to interact with the system and view security reports. A clean, responsive, and accessible interface makes security management straightforward for all users, from novices to security professionals.
-*   **Comprehensive Reporting** 📊: Generates detailed reports on detected threats, system activities, and scan histories. These reports offer actionable insights into security incidents, helping users understand risks and take informed mitigation steps.
+*   **User-friendly GUI** 🖥️: Built with PyQt6, providing a highly responsive, modern desktop interface with interactive graphs, customizable tables, and a seamless user experience.
+*   **Comprehensive Reporting** 📑: Effortlessly export live process lists, network packet captures (PCAP), and scan histories to PDF or CSV formats for forensic analysis.
 
 ## 3. 🏛️ Architecture Overview
 
-NexaShield follows a client-server architecture, separating the user interface from the core logic and machine learning services.
+NexaShield is designed as a powerful modular Desktop Application, seamlessly integrating a locally hosted Python backend with a rich graphical interface.
 
-*   **Front-end** (Client Application) 🌐: The user-facing application, responsible for user interaction, displaying real-time security status, scan results, and reports. It sends requests to the backend API for all core functionalities. This could be a web application, a desktop application, or a mobile app.
-*   **Back-end (API Server)** ⚙️: Acts as the central hub, handling requests from the front-end, orchestrating communication with various ML services, managing user data, configuration, and enforcing business logic. It exposes a RESTful API for seamless interaction.
-*   **Machine Learning Services** 🧠: Dedicated microservices or modules that host the trained ML models for Antivirus and Phishing detection. These services are optimized for high-performance inference, receiving data (e.g., file hashes, URLs) from the backend, performing predictions, and returning results efficiently. They are designed to be scalable and fault-tolerant.
-*   **Data Storage** 🗄️: Securely stores configuration, user data, scan logs, threat intelligence, and potentially model metadata. This includes databases (SQL/NoSQL) for structured data and object storage for larger files or logs.
-*   **Cloud/Local Datasets** ☁️💾: The `Nexa_Datasets` are stored both locally (for development/training) and on cloud platforms (for scalable training and model serving). This ensures data availability, redundancy, and efficient access for ML model training and updates.
+*   **Graphical User Interface (GUI)** 🌐: Developed using PyQt6, it handles user interaction, interactive telemetry charting, and configuration panels.
+*   **Core Logic Engines** ⚙️: Multi-threaded Python workers utilizing libraries like `psutil` (for system metrics) and `scapy` (for deep packet inspection).
+*   **Machine Learning Integration** 🧠: ML models for Antivirus and Phishing detection load locally or communicate with microservices to deliver high-performance inferences.
+*   **Local Database** 🗄️: Uses local SQLite (`nexashield.db`) to log real-time events, threat history, and maintain signature databases locally.
 
 # Working Synopsis 
 
-[Front-end Application] --> B(Backend API Server)
+[PyQt6 Desktop GUI] --> B(Python Core Engine)
     B --> C{ML Service: Phishing Detection}
     B --> D{ML Service: Antivirus Engine}
     C --> E["Nexa_Datasets/phishing (Cloud/Local)"]
     D --> F["Nexa_Datasets/antivirus (Cloud/Local)"]
-    B --> G[Database/Data Storage]
-        H[Threat Intelligence Feeds]
-        I[External APIs (e.g., WHOIS, VirusTotal)]
+    B --> G[SQLite Database]
+    B --> H[Scapy NIDS Engine]
+    B --> I[psutil System Monitor]
 
 
 ## 4. Technology Stack
 
-While specific frameworks are not provided, based on the presence of Python components and `.pkl` files, the following is a likely stack:
-
-*   **Front-end**: (e.g., React, Angular, Vue.js, or a desktop GUI framework like PyQt/Kivy if it's a desktop app).
-*   **Back-end / API**: Python-based frameworks are highly probable.
-    *   **Framework**: Flask, Django, FastAPI
-    *   **API**: RESTful API for communication between front-end and backend, and between backend and ML services.
-*   **Python Components**:
-    *   **Core Logic**: Python scripts and modules for data processing, request handling, and business logic.
-    *   **Machine Learning**: Scikit-learn, TensorFlow, PyTorch (for model training and inference).
-    *   **Data Manipulation**: Pandas, NumPy.
-    *   **Serialization**: `pickle` (for `.pkl` files).
-*   **Styling**: (e.g., CSS, SCSS, Tailwind CSS, or framework-specific styling solutions).
-*   **Database**: (e.g., PostgreSQL, MySQL, MongoDB, SQLite).
+*   **Desktop Framework**: PyQt6 (Python GUI).
+*   **Networking & Sniffing**: Scapy.
+*   **System Telemetry**: psutil, OS-level WMI/bash calls.
+*   **Machine Learning**: Scikit-learn, Pandas, NumPy, TensorFlow/PyTorch.
+*   **Data Serialization**: `pickle` (`.pkl` files), JSON.
+*   **Database**: SQLite (`nexashield.db`).
+*   **PDF Generation**: PyQt6 `QtPrintSupport`.
 
 ## 5. Modules and Components
 
@@ -86,6 +85,15 @@ This module is responsible for detecting and identifying malicious software. It 
 
 ### Phishing Detection Module
 Focused on web-based threats, this module analyzes URLs, website content, and network traffic patterns to identify and warn users about phishing attempts, protecting them from credential theft and other social engineering attacks.
+
+### Network Intrusion Detection (NIDS)
+Sniffs network traffic across all interfaces to intercept malicious packets. Features deep packet inspection, rule-based signature matching (similar to Snort), and active blocking of dangerous IP addresses using the OS's native firewall.
+
+### Process & Memory Management
+Provides detailed insight into system performance, allowing users to track down high CPU/RAM consumers, terminate suspicious activities, evaluate storage health (S.M.A.R.T), and reclaim memory by safely clearing temp files.
+
+### SIEM Dashboard
+A global overview aggregating device telemetry (histograms and donut charts for CPU/RAM/Disk), system health checks, and a consolidated feed of security alerts coming from all other active modules.
 
 ## 6. Machine Learning Models and Datasets
 
@@ -136,8 +144,8 @@ The Phishing Detection module utilizes machine learning to identify and block ma
 
 The project aims for a clean, intuitive, and responsive user interface.
 
-*   **Design Principles**: Emphasis on clarity, ease of use, and quick access to critical security information. Visual cues are used to highlight threats and system status.
-*   **Styling**: (Assumed) Modern and consistent styling, potentially leveraging a UI component library or a custom design system to ensure a cohesive look and feel across the application.
+*   **Design Principles**: Emphasis on clarity, ease of use, and quick access to critical security information. Clean visual cues (color-coded badges, gradients) highlight threats and component statuses intuitively.
+*   **Styling**: Integrated global Qt Stylesheets with dynamically swapping Light/Dark themes and interactive charting components (animated donuts and line graphs).
 
 ## 8. Installation and Setup
 
@@ -148,14 +156,11 @@ The project aims for a clean, intuitive, and responsive user interface.
 git clone https://github.com/your-username/nexashield-app.git
 cd nexashield-app
 
-# For backend
+# Setup Python Environment
 pip install -r requirements.txt
-python manage.py runserver # or python app.py
 
-# For frontend
-cd frontend # if applicable
-npm install
-npm start
+# Run the Application (Requires Admin/Root for full NIDS capabilities)
+python main.py
 ```
 
 ## 9. Usage

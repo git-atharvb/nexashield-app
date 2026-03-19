@@ -324,9 +324,10 @@ class InfoCard(QFrame):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("InfoCard")
+        self.setMinimumHeight(70)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(2)
         
         header = QHBoxLayout()
         lbl_icon = QLabel(icon)
@@ -343,6 +344,8 @@ class InfoCard(QFrame):
         self.lbl_value = QLabel(value)
         self.lbl_value.setObjectName("InfoValue")
         self.lbl_value.setWordWrap(True)
+        self.lbl_value.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
+        self.lbl_value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.lbl_value)
 
     def set_value(self, value):
@@ -534,7 +537,7 @@ class MemoryMonitorWidget(QWidget):
         # 2. System Info
         grp_sys = QGroupBox("Memory Information")
         l_sys = QGridLayout(grp_sys)
-        l_sys.setSpacing(10)
+        l_sys.setSpacing(6)
         
         self.info_uptime = InfoCard("Uptime", "-", "⏱️")
         self.info_os = InfoCard("OS", sys.platform, "💻")
@@ -598,10 +601,16 @@ class MemoryMonitorWidget(QWidget):
         self.update_all_stats()
 
     def update_all_stats(self):
-        self._update_memory()
-        self._update_storage()
-        self._update_system_info()
-        self._update_top_processes()
+        try:
+            self._update_memory()
+            self._update_storage()
+            self._update_system_info()
+            self._update_top_processes()
+        except KeyboardInterrupt:
+            # Gracefully handle manual termination and stop the background timer
+            self.refresh_timer.stop()
+        except Exception:
+            pass
 
     def _update_system_info(self):
         uptime = datetime.datetime.now() - self.boot_time
@@ -712,7 +721,7 @@ class MemoryMonitorWidget(QWidget):
                 cmd = "wmic volume get DriveLetter,Status"
                 si = subprocess.STARTUPINFO()
                 si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                out = subprocess.check_output(cmd, startupinfo=si, shell=False).decode()
+                out = subprocess.check_output(cmd, startupinfo=si, shell=False, timeout=2).decode()
                 for line in out.splitlines():
                     parts = line.split()
                     if len(parts) >= 2:
