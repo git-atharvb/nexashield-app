@@ -38,6 +38,17 @@ class DatabaseManager:
             )
         """)
         
+        # Centralized SIEM Event Auditing Table
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS siem_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                source TEXT,
+                description TEXT,
+                severity TEXT
+            )
+        """)
+        
         # Seed EICAR Test Signature (Standard Anti-Malware Test File)
         eicar_hash = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
         self.cursor.execute("INSERT OR IGNORE INTO signatures VALUES (?, ?, ?, ?)", 
@@ -100,4 +111,11 @@ class DatabaseManager:
     def clear_scan_history(self):
         """Clear all scan history."""
         self.cursor.execute("DELETE FROM scan_history")
+        self.conn.commit()
+
+    def log_siem_event(self, source, description, severity):
+        """Log a generic event for the SIEM Dashboard."""
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO siem_events (timestamp, source, description, severity) VALUES (?, ?, ?, ?)",
+                            (timestamp, source, description, severity))
         self.conn.commit()

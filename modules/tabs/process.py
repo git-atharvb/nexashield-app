@@ -11,6 +11,11 @@ from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QPen, QTextDocument, QPalette, QFont
 from PyQt6.QtPrintSupport import QPrinter
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from database import DatabaseManager
+
 # --- Constants ---
 REFRESH_INTERVAL = 3000  # 3 seconds
 HIGH_CPU_THRESHOLD = 80.0
@@ -440,7 +445,9 @@ class ProcessMonitorWidget(QWidget):
                 if pid in [0, 4]: continue
                 try:
                     p = psutil.Process(pid)
+                    p_name = p.name()
                     p.terminate()
+                    DatabaseManager().log_siem_event("Process Monitor", f"Terminated process '{p_name}' (PID: {pid})", "Warning")
                 except psutil.AccessDenied:
                     errors.append(f"PID {pid}: Access Denied")
                 except Exception as e:

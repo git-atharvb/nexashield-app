@@ -414,9 +414,10 @@ class InfoCard(QFrame):
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("InfoCard")
         self.setMinimumHeight(70)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(2)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
         
         header = QHBoxLayout()
         lbl_icon = QLabel(icon)
@@ -433,9 +434,9 @@ class InfoCard(QFrame):
         self.lbl_value = QLabel(value)
         self.lbl_value.setObjectName("InfoValue")
         self.lbl_value.setWordWrap(True)
-        self.lbl_value.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
         self.lbl_value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.lbl_value)
+        layout.addStretch()
 
     def set_value(self, value):
         self.lbl_value.setText(value)
@@ -633,7 +634,7 @@ class MemoryMonitorWidget(QWidget):
         # 2. System Info
         grp_sys = QGroupBox("Memory Information")
         l_sys = QGridLayout(grp_sys)
-        l_sys.setSpacing(6)
+        l_sys.setSpacing(10)
         
         self.info_uptime = InfoCard("Uptime", "-", "⏱️")
         self.info_os = InfoCard("OS", sys.platform, "💻")
@@ -652,8 +653,8 @@ class MemoryMonitorWidget(QWidget):
         l_sys.addWidget(self.info_kernel, 1, 1)
         l_sys.addWidget(self.info_arch, 1, 2)
         l_sys.addWidget(self.info_proc, 2, 0, 1, 3) # Span 3 cols
-        l_sys.addWidget(self.info_mem, 3, 0)
-        l_sys.addWidget(self.info_swap, 3, 1)
+        l_sys.addWidget(self.info_mem, 3, 0, 1, 1)
+        l_sys.addWidget(self.info_swap, 3, 1, 1, 2) # Span 2 cols to fill the gap
         
         right_layout.addWidget(grp_sys)
 

@@ -13,6 +13,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QRectF
 from PyQt6.QtGui import QColor, QBrush, QPainter, QPainterPath, QLinearGradient, QPen, QFont, QPalette
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from database import DatabaseManager
+
 def block_ip_os(ip_address):
     """Executes OS-level firewall commands to block an IP."""
     try:
@@ -265,6 +270,7 @@ class PacketDetailsDialog(QDialog):
             
         success, msg = block_ip_os(ip)
         if success:
+            DatabaseManager().log_siem_event("NIDS / IPS", f"Manually blocked IP: {ip}", "High")
             QMessageBox.information(self, "IP Blocked", f"Successfully blocked {ip} at OS Firewall.")
             self.block_btn.setEnabled(False)
             self.block_btn.setText("Blocked")
@@ -792,6 +798,7 @@ class NIDSWidget(QWidget):
                     if src_ip and src_ip not in ("Unknown", "System") and src_ip not in self.blocked_ips:
                         success, _ = block_ip_os(src_ip)
                         if success:
+                            DatabaseManager().log_siem_event("NIDS / IPS", f"Auto-blocked high-risk IP: {src_ip}", "Critical")
                             self.blocked_ips.add(src_ip)
                             self.blocked_ips_info[src_ip] = {
                                 "reason": data.get("info", "Auto-blocked by IPS"),
