@@ -301,6 +301,161 @@ QLabel#NavbarTitle {
     color: #0078d7;
 }
 
+/* ---------- Process Tab Specifics ---------- */
+QFrame#ChartCard {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 rgba(255, 255, 255, 0.9), stop:1 rgba(240, 245, 250, 0.8));
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+QFrame#ProcessToolbar {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+QFrame#ProcessTableContainer {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+QTableWidget#ProcessTable {
+    background: transparent;
+    border: none;
+    color: #333333;
+}
+QTableWidget#ProcessTable::item:selected {
+    background-color: rgba(0, 198, 255, 0.2);
+    color: #000000;
+}
+QTableWidget#ProcessTable QHeaderView::section {
+    background-color: transparent;
+    color: #333333;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 8px;
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Process Status Badges */
+#ProcessResourceBar {
+    border: none;
+    border-radius: 4px;
+    background-color: #e0e0e0;
+    text-align: center;
+    color: #333333;
+    font-weight: bold;
+    font-size: 10px;
+}
+#ProcessResourceBar::chunk {
+    border-radius: 4px;
+}
+
+/* Deep Dive Details Panel */
+#DetailsPanel {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+}
+#DetailsTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #0078d7;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eeeeee;
+}
+#DetailsInfo {
+    font-size: 13px;
+    color: #333333;
+    line-height: 1.5;
+}
+
+/* Filter Dropdown */
+QComboBox#FilterDropdown {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    color: #333333;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: bold;
+}
+QComboBox#FilterDropdown::drop-down {
+    border: none;
+    width: 24px;
+}
+QComboBox#FilterDropdown::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #555555;
+    margin-right: 8px;
+}
+QComboBox#FilterDropdown QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    color: #333333;
+    selection-background-color: #0078d7;
+}
+
+QPushButton#ClearSearchBtn {
+    background-color: rgba(255, 71, 87, 0.1);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.4);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    padding: 0px;
+    margin: 0px;
+}
+QPushButton#ClearSearchBtn:hover {
+    background-color: #ff4757;
+    color: white;
+    border: 1px solid #ff4757;
+}
+
+QProgressBar#ProcessResourceBar {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    color: #333333;
+    font-weight: bold;
+    text-align: center;
+    margin: 4px 10px;
+}
+QProgressBar#ProcessResourceBar::chunk {
+    border-radius: 4px;
+}
+
+QPushButton#BtnIcon {
+    background: transparent;
+    color: #555555;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+}
+QPushButton#BtnIcon:hover {
+    color: #ff5e7e;
+}
+
+QPushButton#BtnOutline {
+    background: transparent;
+    color: #333333;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+QPushButton#BtnOutline:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+QCheckBox#ProcessCheckBox {
+    color: #333333;
+    font-weight: bold;
+}
+
 QFrame#CardContainer {
     background-color: #ffffff;
     border: 1px solid #dddddd;

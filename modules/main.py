@@ -63,6 +63,10 @@ class NexaShieldApp(QMainWindow):
 
         self.apply_theme()
 
+        # --- DEV OVERRIDE: Boot to Processes Tab ---
+        self.show_home("Developer")
+        self.home_screen.switch_tab(1)
+
     def center(self):
         w, h = 550, 650
         screen = QApplication.primaryScreen().availableGeometry()

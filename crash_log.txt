@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "a:\Nexa\nexashield-app\modules\tabs\process.py", line 129, in paintEvent
+    glow = QRadialGradient(prev_x, prev_y, 20)
+           ^^^^^^^^^^^^^^^
+NameError: name 'QRadialGradient' is not defined. Did you mean: 'QLinearGradient'?
