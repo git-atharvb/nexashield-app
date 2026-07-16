@@ -1,0 +1,28 @@
+# NexaShield Development Guide & Commands
+
+Here is a quick reference for all the development commands and scripts we used to build and test the application.
+
+## 1. Hot-Reload UI Development
+To automatically restart the UI every time a Python file is saved (perfect for testing layout changes instantly):
+```powershell
+watchmedo auto-restart --patterns="*.py" --recursive -- python modules/main.py
+```
+
+## 2. Standard Application Launch
+To launch the application normally without the auto-reloader:
+```powershell
+python modules/main.py
+```
+
+## 3. Malware Simulator (Testing the AI)
+To launch the invisible background process that intentionally mimics malicious behavior (spikes CPU, opens Network Sockets, hides in Temp) to test the AI scanner:
+```powershell
+python malware_simulator.py
+```
+
+## 4. Retraining the Process Threat AI Model
+If you need to generate a new dataset and retrain the Random Forest model for the AI Process Scanner:
+```powershell
+python modules/ai/processAI/train_process_model.py
+```
+*(This will regenerate the `process_threat_model.pkl` and `process_threat_features.pkl` files).*

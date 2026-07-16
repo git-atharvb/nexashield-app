@@ -1,11 +1,12 @@
 import psutil
 import datetime
 import csv
+import time
 from collections import deque
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLineEdit, QLabel, QHeaderView, QMessageBox, QFileDialog,
-    QAbstractItemView, QFrame, QProgressBar, QCheckBox, QComboBox, QStyle
+    QAbstractItemView, QFrame, QProgressBar, QCheckBox, QComboBox, QStyle, QTextEdit
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QAction, QPainter, QPainterPath, QLinearGradient, QRadialGradient, QPen, QTextDocument, QPalette, QFont
@@ -15,6 +16,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from database import DatabaseManager
+from ai.processAI.process_scanner import ProcessThreatScanner
 
 # --- Constants ---
 REFRESH_INTERVAL = 3000  # 3 seconds
@@ -34,14 +36,23 @@ class SortableTableWidgetItem(QTableWidgetItem):
 class ProcessWorker(QThread):
     """
     Background thread to fetch system processes.
-    Prevents UI freezing during data collection.
+    Prevents UI freezing during data collection and ML inference.
     """
     data_fetched = pyqtSignal(list)
+
+    def __init__(self):
+        super().__init__()
+        self.ai_scan_enabled = False
+        self.ai_scanner = None
+
+    def enable_ai_scan(self, enable, scanner):
+        self.ai_scan_enabled = enable
+        self.ai_scanner = scanner
 
     def run(self):
         processes = []
         # Fetch specific attributes to optimize performance
-        attrs = ['pid', 'name', 'status', 'cpu_percent', 'memory_percent', 'username', 'create_time', 'io_counters']
+        attrs = ['pid', 'name', 'status', 'cpu_percent', 'memory_percent', 'username', 'create_time', 'io_counters', 'exe', 'cmdline']
         
         for proc in psutil.process_iter(attrs):
             try:
@@ -56,10 +67,25 @@ class ProcessWorker(QThread):
                 else:
                     pinfo['disk_read'] = 0
                     pinfo['disk_write'] = 0
+
+                # Perform AI scan in background thread if enabled
+                if self.ai_scan_enabled and self.ai_scanner:
+                    level, color, prob = self.ai_scanner.predict_threat_level(proc)
+                    pinfo['ai_level'] = level
+                    pinfo['ai_color'] = color
+                else:
+                    pinfo['ai_level'] = None
+                    pinfo['ai_color'] = None
                     
                 processes.append(pinfo)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
+                pass
+            
+            # CRITICAL: Yield the Global Interpreter Lock (GIL) to the PyQt main thread!
+            # Python threads share the GIL. Fetching telemetry for 300+ processes continuously
+            # will starve the UI thread, causing lag and "Not Responding" freezes. 
+            # This tiny sleep ensures perfectly smooth 60FPS UI rendering.
+            time.sleep(0.002)
         
         self.data_fetched.emit(processes)
 
@@ -181,6 +207,8 @@ class ProcessMonitorWidget(QWidget):
         # State
         self.process_data = []
         self.filter_text = ""
+        self.ai_scanner = ProcessThreatScanner()
+        self.ai_scan_enabled = False
         
         # UI Setup
         self.setup_ui()
@@ -236,13 +264,48 @@ class ProcessMonitorWidget(QWidget):
         # Smart Filtering Dropdown
         self.filter_combo = QComboBox()
         self.filter_combo.setObjectName("FilterDropdown")
-        self.filter_combo.addItems(["All", "System", "User Apps", "Suspicious"])
-        self.filter_combo.setFixedWidth(150)
+        self.filter_combo.addItems(["All Levels", "Level 1 (Safe)", "Level 2 (Low Risk)", "Level 3 (Moderate)", "Level 4 (High Risk)", "Level 5 (Critical)"])
+        self.filter_combo.setFixedWidth(160)
         self.filter_combo.currentTextChanged.connect(self.set_category_filter)
+        self.filter_combo.setVisible(False)
         control_bar.addWidget(self.filter_combo)
-        self.current_category = "All"
+        self.current_category = "All Levels"
+
+        # Threat Level Color Guide Icon
+        self.info_icon = QLabel("ℹ️")
+        self.info_icon.setStyleSheet("QLabel { font-size: 18px; color: #a4b0be; margin-left: 5px; } QLabel:hover { color: #3498db; }")
+        
+        tooltip_html = (
+            "<div style='padding: 8px;'>"
+            "<h3 style='color: #ffffff; margin-top: 0px; margin-bottom: 10px; border-bottom: 1px solid #555; padding-bottom: 5px;'>🧠 AI Threat Level Guide</h3>"
+            "<table style='font-size: 13px; color: #ecf0f1;' cellspacing='6' cellpadding='0'>"
+            "<tr><td><span style='color:#00b894; font-size: 18px;'>●</span></td><td style='padding-left: 8px;'><b style='color: white;'>Level 1:</b> Safe / System</td></tr>"
+            "<tr><td><span style='color:#0984e3; font-size: 18px;'>●</span></td><td style='padding-left: 8px;'><b style='color: white;'>Level 2:</b> Low Risk</td></tr>"
+            "<tr><td><span style='color:#fdcb6e; font-size: 18px;'>●</span></td><td style='padding-left: 8px;'><b style='color: white;'>Level 3:</b> Moderate Risk</td></tr>"
+            "<tr><td><span style='color:#e17055; font-size: 18px;'>●</span></td><td style='padding-left: 8px;'><b style='color: white;'>Level 4:</b> High Risk</td></tr>"
+            "<tr><td><span style='color:#d63031; font-size: 18px;'>●</span></td><td style='padding-left: 8px;'><b style='color: white;'>Level 5:</b> Critical / Malicious</td></tr>"
+            "</table>"
+            "</div>"
+        )
+        self.info_icon.setToolTip(tooltip_html)
+        self.info_icon.setVisible(False)
+        control_bar.addWidget(self.info_icon)
 
         control_bar.addStretch()
+
+        # Charts Toggle Button
+        self.btn_toggle_charts = QPushButton("📈 System Graphs")
+        self.btn_toggle_charts.setObjectName("BtnOutline")
+        self.btn_toggle_charts.setCheckable(True)
+        self.btn_toggle_charts.setChecked(True)
+        control_bar.addWidget(self.btn_toggle_charts)
+
+        # AI Scan Button
+        self.btn_ai_scan = QPushButton("🧠 AI Threat Scan")
+        self.btn_ai_scan.setObjectName("BtnPrimary")
+        self.btn_ai_scan.setCheckable(True)
+        self.btn_ai_scan.toggled.connect(self.toggle_ai_scan)
+        control_bar.addWidget(self.btn_ai_scan)
 
         # Action Buttons
         self.btn_suspend = QPushButton("⏸️ Suspend")
@@ -280,18 +343,39 @@ class ProcessMonitorWidget(QWidget):
         # --- Content Area (Split 1:2) ---
         content_layout = QHBoxLayout()
 
-        # --- Resource Charts (Vertical Layout on left) ---
+        # --- Resource Charts (Drawer) ---
         self.charts_panel = QFrame()
+        self.charts_panel.setObjectName("DetailsPanel")
+        self.charts_panel.setFixedWidth(320)
+        
         charts_layout = QVBoxLayout(self.charts_panel)
-        charts_layout.setContentsMargins(0, 0, 15, 0)
+        charts_layout.setContentsMargins(15, 15, 15, 15)
         charts_layout.setSpacing(15)
+        
+        charts_header_layout = QHBoxLayout()
+        self.lbl_charts_title = QLabel("System Resources")
+        self.lbl_charts_title.setObjectName("DetailsTitle")
+        charts_header_layout.addWidget(self.lbl_charts_title)
+        
+        charts_header_layout.addStretch()
+        
+        self.btn_close_charts = QPushButton("✖")
+        self.btn_close_charts.setFixedSize(24, 24)
+        self.btn_close_charts.setToolTip("Close Graphs")
+        self.btn_close_charts.setStyleSheet("QPushButton { background-color: transparent; border: none; font-size: 18px; font-weight: bold; color: #a4b0be; } QPushButton:hover { color: #e74c3c; background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }")
+        self.btn_close_charts.clicked.connect(lambda: self.btn_toggle_charts.setChecked(False))
+        charts_header_layout.addWidget(self.btn_close_charts)
+        
+        charts_layout.addLayout(charts_header_layout)
         
         self.cpu_chart = ResourceChart("🧠 CPU Usage", "#00c6ff")
         self.mem_chart = ResourceChart("💾 RAM Usage", "#ff5e7e")
         charts_layout.addWidget(self.cpu_chart)
         charts_layout.addWidget(self.mem_chart)
         
-        content_layout.addWidget(self.charts_panel, 1) # Stretch 1
+        content_layout.addWidget(self.charts_panel)
+        
+        self.btn_toggle_charts.toggled.connect(self.charts_panel.setVisible)
 
         # --- Process Table ---
         self.table_container = QFrame()
@@ -345,29 +429,100 @@ class ProcessMonitorWidget(QWidget):
         details_layout.setContentsMargins(15, 15, 15, 15)
         details_layout.setSpacing(10)
         
+        details_header_layout = QHBoxLayout()
+        
         self.lbl_details_title = QLabel("Process Forensics")
         self.lbl_details_title.setObjectName("DetailsTitle")
-        details_layout.addWidget(self.lbl_details_title)
+        details_header_layout.addWidget(self.lbl_details_title)
         
-        self.lbl_details_info = QLabel("Select a process to inspect.")
-        self.lbl_details_info.setObjectName("DetailsInfo")
-        self.lbl_details_info.setWordWrap(True)
-        self.lbl_details_info.setAlignment(Qt.AlignmentFlag.AlignTop)
-        details_layout.addWidget(self.lbl_details_info, 1)
+        details_header_layout.addStretch()
+        
+        self.btn_close_details = QPushButton("✖")
+        self.btn_close_details.setFixedSize(24, 24)
+        self.btn_close_details.setToolTip("Close Forensics")
+        self.btn_close_details.setStyleSheet("QPushButton { background-color: transparent; border: none; font-size: 18px; font-weight: bold; color: #a4b0be; } QPushButton:hover { color: #e74c3c; background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }")
+        self.btn_close_details.clicked.connect(self.close_details_panel)
+        details_header_layout.addWidget(self.btn_close_details)
+        
+        details_layout.addLayout(details_header_layout)
+        
+        self.txt_details_info = QTextEdit()
+        self.txt_details_info.setReadOnly(True)
+        self.txt_details_info.setFrameShape(QFrame.Shape.NoFrame)
+        self.txt_details_info.setStyleSheet("background: transparent;")
+        self.txt_details_info.setHtml("Select a process to inspect.")
+        
+        details_layout.addWidget(self.txt_details_info, 1)
         
         content_layout.addWidget(self.details_panel)
         
         layout.addLayout(content_layout)
 
         # Status Bar / Footer
-        self.status_label = QLabel("✅ Ready")
-        self.status_label.setObjectName("StatusBarLabel")
-        layout.addWidget(self.status_label)
+        self.status_bar = QFrame()
+        self.status_bar.setObjectName("ProcessStatusBar")
+        self.status_bar.setStyleSheet("""
+            QFrame#ProcessStatusBar {
+                background-color: #1e1e2d;
+                border-top: 1px solid #2d2d3d;
+                border-radius: 6px;
+            }
+        """)
+        status_layout = QHBoxLayout(self.status_bar)
+        status_layout.setContentsMargins(15, 10, 15, 10)
+        
+        self.lbl_system_status = QLabel("🟢 System Status: Active")
+        self.lbl_system_status.setStyleSheet("color: #2ecc71; font-weight: bold; font-size: 13px;")
+        status_layout.addWidget(self.lbl_system_status)
+        
+        status_layout.addStretch()
+        
+        self.lbl_global_cpu = QLabel("Global CPU:")
+        self.lbl_global_cpu.setStyleSheet("color: #a4b0be; font-weight: bold; font-size: 13px;")
+        status_layout.addWidget(self.lbl_global_cpu)
+        
+        self.val_global_cpu = QLabel("0.0%")
+        self.val_global_cpu.setStyleSheet("color: #00c6ff; font-weight: bold; font-size: 14px; min-width: 50px;")
+        status_layout.addWidget(self.val_global_cpu)
+        
+        status_layout.addSpacing(30)
+        
+        self.lbl_global_ram = QLabel("Global RAM:")
+        self.lbl_global_ram.setStyleSheet("color: #a4b0be; font-weight: bold; font-size: 13px;")
+        status_layout.addWidget(self.lbl_global_ram)
+        
+        self.val_global_ram = QLabel("0.0%")
+        self.val_global_ram.setStyleSheet("color: #ff5e7e; font-weight: bold; font-size: 14px; min-width: 50px;")
+        status_layout.addWidget(self.val_global_ram)
+        
+        status_layout.addStretch()
+        
+        self.lbl_process_count = QLabel("Showing 0 Processes")
+        self.lbl_process_count.setStyleSheet("color: #f39c12; font-weight: bold; font-size: 13px;")
+        status_layout.addWidget(self.lbl_process_count)
+        
+        layout.addWidget(self.status_bar)
 
     def reset_ui(self):
         """Clears filters and triggers a data refresh."""
         self.search_input.clear()
         self.chk_select_all.setChecked(False)
+        self.refresh_data()
+
+    def toggle_ai_scan(self, checked):
+        self.ai_scan_enabled = checked
+        self.worker.enable_ai_scan(checked, self.ai_scanner)
+        
+        self.filter_combo.setVisible(checked)
+        self.info_icon.setVisible(checked)
+        
+        if checked:
+            self.btn_ai_scan.setText("🧠 AI Scan Active")
+            self.btn_ai_scan.setStyleSheet("background-color: #9b59b6; color: white;")
+        else:
+            self.filter_combo.setCurrentIndex(0) # Reset filter when AI is turned off
+            self.btn_ai_scan.setText("🧠 AI Threat Scan")
+            self.btn_ai_scan.setStyleSheet("")
         self.refresh_data()
 
     def clear_search(self):
@@ -389,7 +544,7 @@ class ProcessMonitorWidget(QWidget):
     def refresh_data(self):
         """Triggers the background worker if not already running."""
         if not self.worker.isRunning():
-            self.status_label.setText("Updating...")
+            self.lbl_system_status.setText("🟢 System Status: Updating...")
             self.worker.start()
 
     def update_table(self, processes):
@@ -403,21 +558,24 @@ class ProcessMonitorWidget(QWidget):
         # Filter data
         filtered_data = self.filter_data(processes)
 
-        # Disable sorting during update to prevent jumping
+        # Disable sorting and updates during refresh to completely eliminate UI lag
+        self.table.setUpdatesEnabled(False)
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(filtered_data))
         
         # Update Status bar with rich information
         cpu_usage = psutil.cpu_percent()
         mem_usage = psutil.virtual_memory().percent
-        status_text = f"✅ System Status: Active | Global CPU: {cpu_usage}% | Global RAM: {mem_usage}% | Showing {len(filtered_data)} of {len(processes)} Processes"
-        self.status_label.setText(status_text)
+        self.val_global_cpu.setText(f"{cpu_usage}%")
+        self.val_global_ram.setText(f"{mem_usage}%")
+        self.lbl_process_count.setText(f"Showing {len(filtered_data)} of {len(processes)} Processes")
 
         for row_idx, p in enumerate(filtered_data):
             self.set_row_data(row_idx, p)
 
         # Restore State
         self.table.setSortingEnabled(True)
+        self.table.setUpdatesEnabled(True)
         self.table.verticalScrollBar().setValue(current_scroll)
         if selected_pids:
             self.select_rows_by_pids(selected_pids)
@@ -559,7 +717,7 @@ class ProcessMonitorWidget(QWidget):
             user = user.split("\\")[-1]
         update_item(8, user)
 
-        # 9: Start Time
+        # Start Time
         try:
             t = datetime.datetime.fromtimestamp(p['create_time'])
             time_str = t.strftime("%H:%M:%S")
@@ -567,9 +725,13 @@ class ProcessMonitorWidget(QWidget):
             time_str = "-"
         update_item(9, time_str)
         
-        # Suspicious Highlight Heuristic
-        is_suspicious = (p.get('cpu_percent') or 0) > 85 or (p.get('memory_percent') or 0) > 85
-        bg_color = QColor(231, 76, 60, 40) if is_suspicious else None
+        # AI Threat Highlighting or Suspicious Heuristic
+        if self.ai_scan_enabled and p.get('ai_color'):
+            bg_color = QColor(p['ai_color'])
+            bg_color.setAlpha(50)
+        else:
+            is_suspicious = (p.get('cpu_percent') or 0) > 85 or (p.get('memory_percent') or 0) > 85
+            bg_color = QColor(231, 76, 60, 40) if is_suspicious else None
         
         for col in range(1, 10):
             item = self.table.item(row, col)
@@ -582,14 +744,18 @@ class ProcessMonitorWidget(QWidget):
     def filter_data(self, processes):
         filtered = processes
         
-        # Apply Category Filter
-        if hasattr(self, 'current_category'):
-            if self.current_category == "System":
-                filtered = [p for p in filtered if p.get('username') and (p['username'].upper() in ['SYSTEM', 'LOCAL SERVICE', 'NETWORK SERVICE'])]
-            elif self.current_category == "User Apps":
-                filtered = [p for p in filtered if p.get('username') and (p['username'].upper() not in ['SYSTEM', 'LOCAL SERVICE', 'NETWORK SERVICE', ''])]
-            elif self.current_category == "Suspicious":
-                filtered = [p for p in filtered if (p.get('cpu_percent') or 0) > 50 or (p.get('memory_percent') or 0) > 50]
+        # Apply Category Filter for AI Levels
+        if hasattr(self, 'current_category') and self.ai_scan_enabled:
+            level_map = {
+                "Level 1 (Safe)": 1,
+                "Level 2 (Low Risk)": 2,
+                "Level 3 (Moderate)": 3,
+                "Level 4 (High Risk)": 4,
+                "Level 5 (Critical)": 5
+            }
+            if self.current_category in level_map:
+                target_level = level_map[self.current_category]
+                filtered = [p for p in filtered if p.get('ai_level') == target_level]
 
         # Apply Text Filter
         if self.filter_text:
@@ -602,6 +768,10 @@ class ProcessMonitorWidget(QWidget):
         self.current_category = category
         if hasattr(self, 'process_data'):
             self.update_table(self.process_data)
+
+    def close_details_panel(self):
+        self.details_panel.hide()
+        self.table.clearSelection()
 
     def handle_search(self, text):
         self.filter_text = text
@@ -620,32 +790,90 @@ class ProcessMonitorWidget(QWidget):
             
         pid = int(pid_item.text())
         self.details_panel.show()
-        self.lbl_details_info.setText(f"Loading forensics for PID {pid}...")
+        self.txt_details_info.setHtml(f"Loading forensics for PID {pid}...")
         
         # One-off forensic pull
         try:
             proc = psutil.Process(pid)
-            exe = proc.exe() or "Unknown"
-            cmd = " ".join(proc.cmdline()) or "Unknown"
-            threads = proc.num_threads()
+            
+            try:
+                exe = proc.exe() or "Unknown"
+            except psutil.AccessDenied:
+                exe = "Access Denied"
+                
+            try:
+                cmd = " ".join(proc.cmdline()) or "Unknown"
+            except psutil.AccessDenied:
+                cmd = "Access Denied"
+                
+            try:
+                threads = proc.num_threads()
+            except psutil.AccessDenied:
+                threads = "Unknown"
             
             try:
                 conns = len(proc.connections())
             except psutil.AccessDenied:
                 conns = "Access Denied"
+                
+            # Attempt to locate the process in cached data for AI Level
+            p_data = None
+            if hasattr(self, 'process_data'):
+                for p in self.process_data:
+                    if p.get('pid') == pid:
+                        p_data = p
+                        break
             
-            details = f"<b style='color:#0078d7;'>Executable:</b><br>{exe}<br><br>"
-            details += f"<b style='color:#0078d7;'>Command Line:</b><br>{cmd}<br><br>"
-            details += f"<b style='color:#0078d7;'>Threads:</b> {threads}<br><br>"
+            ai_reasoning = ""
+            if self.ai_scan_enabled and p_data and p_data.get('ai_level'):
+                lvl = p_data.get('ai_level')
+                reason = "This process exhibits "
+                
+                # Dynamic Reasoning Engine
+                factors = []
+                cpu_p = p_data.get('cpu_percent') or 0
+                mem_p = p_data.get('memory_percent') or 0
+                path_ctx = (exe + " " + cmd).lower()
+                
+                if 'temp' in path_ctx and 'access denied' not in path_ctx:
+                    factors.append("execution from a highly suspicious temporary directory")
+                if 'appdata' in path_ctx and 'access denied' not in path_ctx:
+                    factors.append("execution from an AppData roaming/local user directory")
+                if cpu_p > 30:
+                    factors.append(f"excessive CPU utilization ({cpu_p:.1f}%)")
+                if mem_p > 30:
+                    factors.append(f"heavy memory consumption ({mem_p:.1f}%)")
+                if conns != "Access Denied" and conns > 0:
+                    factors.append("active outbound network sockets")
+                
+                if lvl == 1:
+                    ai_reasoning = "<b>🧠 AI Analysis: <span style='color:#00b894;'>Level 1 (Safe)</span></b><br>The AI engine determined this process to be benign. It operates within normal system bounds without exhibiting any recognized malicious patterns or resource anomalies."
+                elif lvl == 2:
+                    reason += factors[0] if factors else "minor telemetry anomalies"
+                    ai_reasoning = f"<b>🧠 AI Analysis: <span style='color:#0984e3;'>Level 2 (Low Risk)</span></b><br>The AI detected minor irregularities, primarily {reason}, but it does not currently pose a significant threat. Standard system process behavior is observed."
+                elif lvl == 3:
+                    reason += " and ".join(factors[:2]) if len(factors) > 0 else "moderate anomalous resource usage"
+                    ai_reasoning = f"<b>🧠 AI Analysis: <span style='color:#fdcb6e;'>Level 3 (Moderate Risk)</span></b><br>The AI flagged this process due to its atypical behavioral signature. Specifically, it displays {reason}. It warrants monitoring."
+                elif lvl == 4:
+                    reason += ", and ".join(factors) if len(factors) > 0 else "highly suspicious characteristics"
+                    ai_reasoning = f"<b>🧠 AI Analysis: <span style='color:#e17055;'>Level 4 (High Risk)</span></b><br>The AI strongly suspects this process is malicious. It identified a dangerous combination of {reason}. Immediate investigation is highly recommended."
+                elif lvl == 5:
+                    reason += ", and ".join(factors) if len(factors) > 0 else "critical malicious indicators"
+                    ai_reasoning = f"<b>🧠 AI Analysis: <span style='color:#d63031;'>Level 5 (Critical)</span></b><br><b>WARNING:</b> The AI has classified this process as a critical threat. The specific combination of {reason} perfectly matches high-confidence malware execution signatures."
+                
+                ai_reasoning += "<br><br>"
+            
+            details = ai_reasoning
+            details += f"<b style='color:#0078d7;'>Executable Path:</b><br>{exe}<br><br>"
+            details += f"<b style='color:#0078d7;'>Command Line Arguments:</b><br>{cmd}<br><br>"
+            details += f"<b style='color:#0078d7;'>Active Threads:</b> {threads}<br><br>"
             details += f"<b style='color:#0078d7;'>Network Connections:</b> {conns}<br>"
             
-            self.lbl_details_info.setText(details)
-        except psutil.AccessDenied:
-            self.lbl_details_info.setText(f"Access Denied for PID {pid}.<br><br>Run NexaShield as Administrator to view deep forensics.")
+            self.txt_details_info.setHtml(details)
         except psutil.NoSuchProcess:
-            self.lbl_details_info.setText(f"Process {pid} has terminated.")
+            self.txt_details_info.setHtml(f"Process {pid} has terminated.")
         except Exception as e:
-            self.lbl_details_info.setText(f"Error fetching forensics: {str(e)}")
+            self.txt_details_info.setHtml(f"Error fetching forensics: {str(e)}")
 
     def get_selected_pids(self):
         pids = []
@@ -711,7 +939,7 @@ class ProcessMonitorWidget(QWidget):
             except Exception:
                 pass
         
-        self.status_label.setText(f"{action.capitalize()}ed {count} processes.")
+        self.lbl_system_status.setText(f"🟢 System Status: {action.capitalize()}ed {count} processes.")
         self.refresh_data()
 
     def export_csv(self):
