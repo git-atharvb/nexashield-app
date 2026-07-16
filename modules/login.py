@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QMessageBox, QWidget, QDialog, QVBoxLayout, QHBoxLayout,
     QFrame, QGraphicsDropShadowEffect, QStackedWidget
 )
-from PyQt6.QtGui import QPainter, QPainterPath, QColor, QLinearGradient, QPen, QPixmap
+from PyQt6.QtGui import QPainter, QPainterPath, QColor, QLinearGradient, QPen, QPixmap, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
 from ui_components import AuthStyle, PasswordInput, GlowingLogo
 from google_auth import GoogleAuthWorker
@@ -117,6 +117,14 @@ class LoginWindow(AuthStyle):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.frame_layout.addWidget(title)
 
+        subtitle = QLabel("Advanced Cybersecurity Defense System")
+        subtitle.setObjectName("AuthSubtitle")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.frame_layout.addWidget(subtitle)
+        
+        # Add some spacing before inputs
+        self.frame_layout.addSpacing(10)
+
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username")
         self.frame_layout.addWidget(self.username_input)
@@ -125,39 +133,31 @@ class LoginWindow(AuthStyle):
         self.password_input = PasswordInput("Password")
         self.frame_layout.addWidget(self.password_input)
 
-        # Using Stacked Widget to swap Button & Spinner cleanly without gaps
-        self.login_stack = QStackedWidget()
-        
-        self.login_btn = QPushButton("🔓 Login")
+        self.login_btn = QPushButton("Login")
+        self.login_btn.setObjectName("AuthPrimaryButton")
         self.login_btn.clicked.connect(self.handle_login)
-        self.login_stack.addWidget(self.login_btn)
-        
-        self.spinner_container = QWidget()
-        spinner_layout = QVBoxLayout(self.spinner_container)
-        spinner_layout.setContentsMargins(0, 0, 0, 0)
-        self.spinner = LoadingSpinner()
-        spinner_layout.addWidget(self.spinner, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.login_stack.addWidget(self.spinner_container)
-        
-        self.frame_layout.addWidget(self.login_stack)
+        self.frame_layout.addWidget(self.login_btn)
 
-        self.google_btn = QPushButton("🌐 Sign in with Google")
-        self.google_btn.setObjectName("GoogleButton")
-        self.google_btn.clicked.connect(self.handle_google_login)
-        self.frame_layout.addWidget(self.google_btn)
-
-        self.forgot_link = QPushButton("❓ Forgot Password?")
+        self.forgot_link = QPushButton("Forgot Password?")
         self.forgot_link.setObjectName("LinkButton")
         self.forgot_link.clicked.connect(self.switch_to_forgot.emit)
         self.frame_layout.addWidget(self.forgot_link)
 
-        self.signup_link = QPushButton("✨ Create an Account")
+        self.google_btn = QPushButton(" Sign in with Google")
+        self.google_btn.setObjectName("GoogleButton")
+        google_icon_path = os.path.join(os.path.dirname(__file__), "..", "assets", "google.png")
+        self.google_btn.setIcon(QIcon(google_icon_path))
+        self.google_btn.clicked.connect(self.handle_google_login)
+        self.frame_layout.addWidget(self.google_btn)
+
+        self.signup_link = QPushButton("Create an Account")
         self.signup_link.setObjectName("LinkButton")
         self.signup_link.clicked.connect(self.switch_to_signup.emit)
         self.frame_layout.addWidget(self.signup_link)
 
     def handle_login(self):
-        self.login_stack.setCurrentIndex(1) # Show Spinner
+        self.login_btn.setText("Logging in...")
+        self.login_btn.setEnabled(False)
         
         # Simulate processing delay for animation
         QTimer.singleShot(1500, self.perform_login)
@@ -166,7 +166,8 @@ class LoginWindow(AuthStyle):
         username = self.username_input.text()
         password = self.password_input.text()
 
-        self.login_stack.setCurrentIndex(0) # Show Button
+        self.login_btn.setText("Login")
+        self.login_btn.setEnabled(True)
 
         if self.db.verify_user(username, password):
             dlg = LoginSuccessDialog(self, username)
@@ -180,8 +181,9 @@ class LoginWindow(AuthStyle):
         client_id = None
         client_secret = None
         
-        # --- CONFIGURATION: Set your manual path here if needed ---
-        manual_path = r"C:\Users\ATHARV\Downloads\client_secret.json"
+        # --- CONFIGURATION: Optional manual override path ---
+        # Leave as None to auto-detect client_secret.json next to the app / project root.
+        manual_path = None
         # ---------------------------------------------------------
 
         # Look for the file in the same directory as this script or one level up
@@ -195,6 +197,8 @@ class LoginWindow(AuthStyle):
         ]
 
         for path in possible_paths:
+            if not path:
+                continue
             if os.path.exists(path):
                 try:
                     with open(path, 'r') as f:
@@ -228,12 +232,12 @@ class LoginWindow(AuthStyle):
         dlg.exec()
         self.login_success.emit(email)
         self.login_btn.setEnabled(True)
-        self.google_btn.setText("🌐 Sign in with Google")
+        self.google_btn.setText(" Sign in with Google")
 
     def on_google_error(self, error_msg):
         QMessageBox.critical(self, "Google Login Error", error_msg)
         self.login_btn.setEnabled(True)
-        self.google_btn.setText("🌐 Sign in with Google")
+        self.google_btn.setText(" Sign in with Google")
 
     def clear_inputs(self):
         self.username_input.clear()

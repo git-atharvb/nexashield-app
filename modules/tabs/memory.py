@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
     QFrame, QCheckBox, QFileDialog, QMessageBox, QSizePolicy, 
-    QAbstractItemView, QGroupBox, QTabWidget, QToolTip
+    QAbstractItemView, QGroupBox, QTabWidget, QToolTip, QScrollArea
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QBuffer, QIODevice, QByteArray, QSize, QThread, pyqtSignal
 from PyQt6.QtGui import (
@@ -227,7 +227,7 @@ class DonutChart(QWidget):
         self.primary_color = QColor(color)
         self.bg_color = QColor(0, 0, 0, 50) # Semi-transparent black
         self.percent = 0.0
-        self.setMinimumSize(140, 140)
+        self.setMinimumSize(140, 160)
 
     def update_value(self, percent):
         self.percent = percent
@@ -268,7 +268,7 @@ class DiskPartitionPieChart(QWidget):
     """Pie chart to visualize disk partition division."""
     def __init__(self):
         super().__init__()
-        self.setMinimumSize(200, 150)
+        self.setMinimumSize(200, 180)
         self.partitions = [] # List of (name, value, color)
         self.colors = [
             QColor("#0078d7"), QColor("#28a745"), QColor("#ffc107"), 
@@ -391,6 +391,7 @@ class MetricCard(QFrame):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("MetricCard")
+        self.setMinimumHeight(80)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -413,8 +414,9 @@ class InfoCard(QFrame):
         super().__init__()
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("InfoCard")
-        self.setMinimumHeight(70)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # Increase minimum height to prevent overlapping and adjust size policy
+        self.setMinimumHeight(95)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
@@ -433,19 +435,23 @@ class InfoCard(QFrame):
         
         self.lbl_value = QLabel(value)
         self.lbl_value.setObjectName("InfoValue")
-        self.lbl_value.setWordWrap(True)
+        # Re-enable word wrap so long processor strings can wrap to the next line comfortably
+        self.lbl_value.setWordWrap(True) 
+        # Add tooltip so full text is visible if it gets truncated
+        self.lbl_value.setToolTip(value)
         self.lbl_value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.lbl_value)
         layout.addStretch()
 
     def set_value(self, value):
         self.lbl_value.setText(value)
+        self.lbl_value.setToolTip(value)
 
 class DataFlowDiagram(QWidget):
     """Visual representation of system resource flow."""
     def __init__(self):
         super().__init__()
-        self.setMinimumHeight(140)
+        self.setMinimumHeight(160)
         self.cpu_val = 0
         self.ram_val = 0
         self.swap_val = 0
@@ -470,7 +476,7 @@ class DataFlowDiagram(QWidget):
         col_disk = QColor("#dc3545") if self.disk_active else QColor("#666")
         
         # Draw Nodes (Circles)
-        y_mid = h / 2
+        y_mid = h / 2 - 10
         r = 30
         
         def draw_node(x, label, val, color):
@@ -527,9 +533,20 @@ class MemoryMonitorWidget(QWidget):
         self.boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
 
         # --- Main Layout ---
-        self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        
+        self.scroll_content = QWidget()
+        self.main_layout = QVBoxLayout(self.scroll_content)
+        self.main_layout.setContentsMargins(15, 15, 15, 15)
         self.main_layout.setSpacing(20)
+        
+        self.scroll_area.setWidget(self.scroll_content)
+        outer_layout.addWidget(self.scroll_area)
 
         self._setup_ui()
 
@@ -549,6 +566,42 @@ class MemoryMonitorWidget(QWidget):
         self.refresh_timer.stop()
 
     def _setup_ui(self):
+        # --- Top Toolbar: Operations ---
+        top_toolbar = QWidget()
+        l_ops = QHBoxLayout(top_toolbar)
+        l_ops.setContentsMargins(0, 0, 0, 0)
+        l_ops.setSpacing(15)
+        
+        self.btn_refresh = QPushButton("🔄 Refresh")
+        self.btn_refresh.setObjectName("BtnPrimary")
+        self.btn_refresh.clicked.connect(self.update_all_stats)
+        
+        self.btn_clean = QPushButton("🗑️ Clean Temp")
+        self.btn_clean.setObjectName("BtnDanger")
+        self.btn_clean.clicked.connect(self.clean_temp_files)
+        
+        self.btn_export = QPushButton("📄 Export PDF")
+        self.btn_export.setObjectName("BtnWarning")
+        self.btn_export.clicked.connect(self.export_pdf)
+        
+        self.chk_auto = QCheckBox("Auto-Refresh (2s)")
+        self.chk_auto.setChecked(True)
+        self.chk_auto.stateChanged.connect(self._toggle_auto)
+
+        l_ops.addWidget(self.btn_refresh)
+        l_ops.addWidget(self.btn_clean)
+        l_ops.addWidget(self.btn_export)
+        l_ops.addStretch()
+        l_ops.addWidget(self.chk_auto)
+        
+        self.main_layout.addWidget(top_toolbar)
+
+        # --- Content Area (Two Columns) ---
+        content_container = QWidget()
+        content_layout = QHBoxLayout(content_container)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(20)
+
         # --- Left Column: Visuals & Statistics ---
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
@@ -574,7 +627,7 @@ class MemoryMonitorWidget(QWidget):
         # 3. Key Metrics Grid
         grp_metrics = QGroupBox("Key Statistics")
         l_metrics = QGridLayout(grp_metrics)
-        self.card_total = MetricCard("Total RAM", color="#888888") # Neutral color
+        self.card_total = MetricCard("Total RAM", color="#888888")
         self.card_used = MetricCard("Used RAM", color="#0078d7")
         self.card_avail = MetricCard("Available", color="#28a745")
         self.card_swap = MetricCard("Swap Used", color="#ffc107")
@@ -585,7 +638,6 @@ class MemoryMonitorWidget(QWidget):
         left_layout.addWidget(grp_metrics)
 
         # 4. Historical Charts
-        # Use TabWidget to save space and avoid scrolling
         self.chart_tabs = QTabWidget()
         self.chart_ram_hist = ModernChart("RAM History", "#0078d7")
         self.chart_read = ModernChart("Read Speed", "#28a745", max_value=1024*1024, auto_scale=True, suffix="B")
@@ -594,44 +646,16 @@ class MemoryMonitorWidget(QWidget):
         self.chart_tabs.addTab(self.chart_ram_hist, "RAM")
         self.chart_tabs.addTab(self.chart_read, "Disk Read")
         self.chart_tabs.addTab(self.chart_write, "Disk Write")
-        left_layout.addWidget(self.chart_tabs)
+        self.chart_tabs.setMinimumHeight(200)
+        left_layout.addWidget(self.chart_tabs, 1) # Added stretch 1 to fill available space gracefully
 
-        left_layout.addStretch()
-
-        # --- Right Column: Tables, Info & Operations ---
+        # --- Right Column: Tables, Info ---
         right_container = QWidget()
         right_layout = QVBoxLayout(right_container)
         right_layout.setSpacing(15)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 1. Operations Toolbar
-        grp_ops = QGroupBox("Operations")
-        l_ops = QHBoxLayout(grp_ops)
-        l_ops.setSpacing(10)
-        
-        self.btn_refresh = QPushButton("Refresh")
-        self.btn_refresh.setObjectName("BtnPrimary")
-        self.btn_refresh.clicked.connect(self.update_all_stats)
-        
-        self.btn_clean = QPushButton("Clean Temp")
-        self.btn_clean.setObjectName("BtnDanger")
-        self.btn_clean.clicked.connect(self.clean_temp_files)
-        
-        self.btn_export = QPushButton("Export PDF")
-        self.btn_export.setObjectName("BtnWarning")
-        self.btn_export.clicked.connect(self.export_pdf)
-        
-        self.chk_auto = QCheckBox("Auto-Refresh")
-        self.chk_auto.setChecked(True)
-        self.chk_auto.stateChanged.connect(self._toggle_auto)
-
-        l_ops.addWidget(self.btn_refresh)
-        l_ops.addWidget(self.btn_clean)
-        l_ops.addWidget(self.btn_export)
-        l_ops.addWidget(self.chk_auto)
-        right_layout.addWidget(grp_ops)
-
-        # 2. System Info
+        # 1. System Info
         grp_sys = QGroupBox("Memory Information")
         l_sys = QGridLayout(grp_sys)
         l_sys.setSpacing(10)
@@ -654,11 +678,11 @@ class MemoryMonitorWidget(QWidget):
         l_sys.addWidget(self.info_arch, 1, 2)
         l_sys.addWidget(self.info_proc, 2, 0, 1, 3) # Span 3 cols
         l_sys.addWidget(self.info_mem, 3, 0, 1, 1)
-        l_sys.addWidget(self.info_swap, 3, 1, 1, 2) # Span 2 cols to fill the gap
+        l_sys.addWidget(self.info_swap, 3, 1, 1, 2) # Span 2 cols
         
-        right_layout.addWidget(grp_sys)
+        right_layout.addWidget(grp_sys, 0) # No stretch so it sizes to contents safely
 
-        # 4. Storage Partitions
+        # 2. Storage Partitions
         grp_disk = QGroupBox("Storage Partitions")
         l_disk = QHBoxLayout(grp_disk)
         self.disk_table = QTableWidget()
@@ -667,6 +691,7 @@ class MemoryMonitorWidget(QWidget):
         self.disk_table.verticalHeader().setVisible(False)
         self.disk_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.disk_table.setAlternatingRowColors(True)
+        self.disk_table.setMinimumHeight(150)
         l_disk.addWidget(self.disk_table, 2)
         
         self.disk_chart = DiskPartitionPieChart()
@@ -674,7 +699,7 @@ class MemoryMonitorWidget(QWidget):
         
         right_layout.addWidget(grp_disk, 1)
 
-        # 5. Top Processes
+        # 3. Top Processes
         grp_proc = QGroupBox("Top Memory Consumers")
         l_proc = QVBoxLayout(grp_proc)
         self.proc_table = QTableWidget()
@@ -683,13 +708,15 @@ class MemoryMonitorWidget(QWidget):
         self.proc_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.proc_table.verticalHeader().setVisible(False)
         self.proc_table.setAlternatingRowColors(True)
-        self.proc_table.setMinimumHeight(120)
+        self.proc_table.setMinimumHeight(200)
         l_proc.addWidget(self.proc_table)
         right_layout.addWidget(grp_proc, 1)
 
-        # Add columns to main layout
-        self.main_layout.addWidget(left_container, 4)
-        self.main_layout.addWidget(right_container, 6)
+        # Assemble main content area
+        content_layout.addWidget(left_container, 4)
+        content_layout.addWidget(right_container, 6)
+        
+        self.main_layout.addWidget(content_container, 1)
 
     # --- Logic ---
 

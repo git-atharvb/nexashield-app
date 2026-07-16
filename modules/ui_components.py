@@ -3,8 +3,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QFrame, QHBoxLayout, QLineEdit, QToolButton, QGridLayout, QPushButton,
     QLabel, QGraphicsDropShadowEffect, QSizePolicy
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient
 
 class PasswordInput(QFrame):
     """Custom widget with an embedded eye icon to toggle visibility."""
@@ -25,7 +25,7 @@ class PasswordInput(QFrame):
         self.layout.addWidget(self.line_edit)
 
         self.toggle_btn = QToolButton()
-        self.toggle_btn.setText("👁") # Unicode Eye Icon
+        self.toggle_btn.setText("👁")
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.toggle_visibility)
@@ -43,6 +43,7 @@ class AuthStyle(QWidget):
     """Base class for styling Login/Signup forms."""
     def __init__(self):
         super().__init__()
+        self.setObjectName("AuthWindow")
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
@@ -62,13 +63,21 @@ class AuthStyle(QWidget):
 
         # Container for the form to center it
         self.frame = QFrame()
-        self.frame.setFixedWidth(400)
+        self.frame.setFixedWidth(420)
         self.frame.setObjectName("AuthFrame")
-        self.frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed) # Prevent internal element squishing without scrollbars
+        self.frame.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        
+        # Superb floating drop shadow effect
+        self.shadow = QGraphicsDropShadowEffect(self)
+        self.shadow.setBlurRadius(40)
+        self.shadow.setXOffset(0)
+        self.shadow.setYOffset(10)
+        self.shadow.setColor(QColor(0, 0, 0, 60))
+        self.frame.setGraphicsEffect(self.shadow)
         
         self.frame_layout = QVBoxLayout()
-        self.frame_layout.setSpacing(12) 
-        self.frame_layout.setContentsMargins(25, 25, 25, 25)
+        self.frame_layout.setSpacing(16) 
+        self.frame_layout.setContentsMargins(40, 40, 40, 40)
         self.frame.setLayout(self.frame_layout)
         
         # Secure horizontal centering
@@ -79,6 +88,48 @@ class AuthStyle(QWidget):
         self.main_layout.addLayout(h_center)
 
         self.main_layout.addStretch()
+
+    def paintEvent(self, event):
+        """Draw a superb Aurora-style background with glowing orbs."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        bg_color = self.palette().window().color()
+        is_dark = bg_color.lightness() < 128
+        
+        # Fill base background
+        painter.fillRect(self.rect(), bg_color)
+        
+        # Determine orb colors based on theme
+        if is_dark:
+            color1 = QColor(26, 115, 232, 70)   # Electric Blue
+            color2 = QColor(142, 36, 170, 50)   # Deep Purple
+            color3 = QColor(0, 210, 255, 30)    # Cyan
+        else:
+            # Upgraded Light Mode: Vibrant Sunrise Mesh
+            color1 = QColor(255, 94, 126, 60)   # Vibrant Pink/Magenta
+            color2 = QColor(255, 204, 112, 70)  # Warm Gold
+            color3 = QColor(0, 198, 255, 50)    # Bright Sky Blue
+            
+        w, h = self.width(), self.height()
+
+        # Top-Left Glowing Orb
+        grad1 = QRadialGradient(0, 0, w * 0.7)
+        grad1.setColorAt(0, color1)
+        grad1.setColorAt(1, Qt.GlobalColor.transparent)
+        painter.fillRect(self.rect(), grad1)
+
+        # Bottom-Right Glowing Orb
+        grad2 = QRadialGradient(w, h, w * 0.7)
+        grad2.setColorAt(0, color2)
+        grad2.setColorAt(1, Qt.GlobalColor.transparent)
+        painter.fillRect(self.rect(), grad2)
+
+        # Center-Bottom Glowing Orb
+        grad3 = QRadialGradient(w * 0.5, h, w * 0.5)
+        grad3.setColorAt(0, color3)
+        grad3.setColorAt(1, Qt.GlobalColor.transparent)
+        painter.fillRect(self.rect(), grad3)
 
 class GlowingLogo(QWidget):
     """A reusable logo widget safely sized to guarantee no element overlapping."""

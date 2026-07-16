@@ -1,0 +1,12 @@
+# NexaShield Cybersecurity Suite - Python dependencies
+# Install with:  pip install -r requirements.txt
+# Run the app from inside the modules folder:  cd nexashield-app/modules && python main.py
+
+PyQt6>=6.5.0
+scapy>=2.5.0          # Network sniffing / NIDS (also requires Npcap/WinPcap on Windows)
+psutil>=5.9.0         # System / process / memory telemetry
+watchdog>=3.0.0       # Real-time antivirus file monitoring (optional but recommended)
+requests>=2.31.0      # Google OAuth sign-in
+scikit-learn>=1.3.0   # Phishing ML model (phishing_model.pkl / vectorizer.pkl)
+pandas>=2.0.0
+numpy>=1.24.0

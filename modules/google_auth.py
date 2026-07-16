@@ -29,6 +29,19 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
                 </body></html>
                 """
                 self.wfile.write(html.encode('utf-8'))
+            elif 'error' in query:
+                self.server.auth_error = query['error'][0]
+                self.send_response(400)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                html = f"""
+                <html><body style="font-family: sans-serif; text-align: center; background-color: #2b2b2b; color: white; padding-top: 50px;">
+                    <h1>Login Failed</h1>
+                    <p>Error: {self.server.auth_error}</p>
+                    <p>You can close this window and return to NexaShield.</p>
+                </body></html>
+                """
+                self.wfile.write(html.encode('utf-8'))
             else:
                 self.send_error(400, "Authorization code not found")
         else:
@@ -41,16 +54,23 @@ class GoogleAuthWorker(QThread):
     auth_success = pyqtSignal(dict)  # Returns user info (email, name, picture)
     auth_error = pyqtSignal(str)
 
-    def __init__(self, client_id, client_secret, redirect_port=5000):
+    def __init__(self, client_id, client_secret):
         super().__init__()
         self.client_id = client_id
         self.client_secret = client_secret
-        self.redirect_port = redirect_port
-        self.redirect_uri = f"http://127.0.0.1:{redirect_port}/callback"
+        self.redirect_port = 0
+        self.redirect_uri = ""
 
     def run(self):
         try:
-            # 1. Construct Auth URL
+            # 1. Start Local Server to listen for the callback on an available port
+            server = HTTPServer(('127.0.0.1', 0), OAuthCallbackHandler)
+            self.redirect_port = server.server_port
+            self.redirect_uri = f"http://127.0.0.1:{self.redirect_port}/callback"
+            server.auth_code = None
+            server.auth_error = None
+
+            # 2. Construct Auth URL
             auth_url = (
                 f"https://accounts.google.com/o/oauth2/auth?"
                 f"response_type=code&client_id={self.client_id}&"
@@ -58,16 +78,17 @@ class GoogleAuthWorker(QThread):
                 f"scope=openid%20email%20profile"
             )
 
-            # 2. Start Local Server to listen for the callback
-            server = HTTPServer(('127.0.0.1', self.redirect_port), OAuthCallbackHandler)
-            server.auth_code = None
-
             # 3. Open System Browser
             webbrowser.open(auth_url)
 
-            # 4. Wait for the callback (handle requests until we get the code)
-            while not server.auth_code:
+            # 4. Wait for the callback (handle requests until we get the code or error)
+            while not server.auth_code and not server.auth_error:
                 server.handle_request()
+
+            if server.auth_error:
+                self.auth_error.emit(f"Authentication Error: {server.auth_error}")
+                server.server_close()
+                return
 
             # 5. Exchange Code for Access Token
             token_data = {
@@ -89,7 +110,7 @@ class GoogleAuthWorker(QThread):
                 )
                 self.auth_success.emit(user_info_resp.json())
             else:
-                self.auth_error.emit("Failed to retrieve access token.")
+                self.auth_error.emit(f"Failed to retrieve access token: {tokens.get('error', 'Unknown error')}")
 
             server.server_close()
 

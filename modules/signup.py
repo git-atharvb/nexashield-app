@@ -23,6 +23,13 @@ class SignupWindow(AuthStyle):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.frame_layout.addWidget(title)
 
+        subtitle = QLabel("Initialize your next-generation security profile")
+        subtitle.setObjectName("AuthSubtitle")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.frame_layout.addWidget(subtitle)
+        
+        self.frame_layout.addSpacing(10)
+
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Choose Username")
         self.frame_layout.addWidget(self.username_input)
@@ -55,12 +62,12 @@ class SignupWindow(AuthStyle):
         self.strength_label.setObjectName("StrengthLabel")
         self.frame_layout.addWidget(self.strength_label)
 
-        self.signup_btn = QPushButton("✅ Sign Up")
-        self.signup_btn.setObjectName("SignupButton")
+        self.signup_btn = QPushButton("Sign Up")
+        self.signup_btn.setObjectName("AuthGreenButton")
         self.signup_btn.clicked.connect(self.handle_signup)
         self.frame_layout.addWidget(self.signup_btn)
 
-        self.login_link = QPushButton("⬅️ Back to Login")
+        self.login_link = QPushButton("Back to Login")
         self.login_link.setObjectName("LinkButton")
         self.login_link.clicked.connect(self.switch_to_login.emit)
         self.frame_layout.addWidget(self.login_link)
@@ -79,25 +86,20 @@ class SignupWindow(AuthStyle):
         self.strength_bar.setValue(score * 25)
 
         if score < 2:
-            self.strength_bar.setProperty("strength", "weak")
+            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #ff4757; }")
             self.strength_label.setText("Weak (Need 8+ chars, numbers, symbols)")
-            self.strength_label.setProperty("strength", "weak")
+            self.strength_label.setStyleSheet("color: #ff4757;")
             self.is_password_strong = False
         elif score < 4:
-            self.strength_bar.setProperty("strength", "medium")
+            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #ffa502; }")
             self.strength_label.setText("Medium (Add special chars & uppercase)")
-            self.strength_label.setProperty("strength", "medium")
+            self.strength_label.setStyleSheet("color: #ffa502;")
             self.is_password_strong = False
         else:
-            self.strength_bar.setProperty("strength", "strong")
+            self.strength_bar.setStyleSheet("QProgressBar::chunk { background-color: #2ed573; }")
             self.strength_label.setText("Strong")
-            self.strength_label.setProperty("strength", "strong")
+            self.strength_label.setStyleSheet("color: #2ed573;")
             self.is_password_strong = True
-            
-        self.strength_bar.style().unpolish(self.strength_bar)
-        self.strength_bar.style().polish(self.strength_bar)
-        self.strength_label.style().unpolish(self.strength_label)
-        self.strength_label.style().polish(self.strength_label)
 
     def handle_signup(self):
         username = self.username_input.text()

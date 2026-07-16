@@ -151,17 +151,6 @@ The project aims for a clean, intuitive, and responsive user interface.
 
 *(Provide instructions here for setting up the project locally. This would typically include cloning the repository, installing dependencies, configuring environment variables, and running the application.)*
 
-```bash
-# Example steps (replace with actual instructions)
-git clone https://github.com/your-username/nexashield-app.git
-cd nexashield-app
-
-# Setup Python Environment
-pip install -r requirements.txt
-
-# Run the Application (Requires Admin/Root for full NIDS capabilities)
-python main.py
-```
 
 ## 9. Usage
 

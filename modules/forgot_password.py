@@ -21,12 +21,20 @@ class ForgotPasswordWindow(AuthStyle):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.frame_layout.addWidget(title)
 
+        subtitle = QLabel("Verify your identity to restore access securely")
+        subtitle.setObjectName("AuthSubtitle")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.frame_layout.addWidget(subtitle)
+        
+        self.frame_layout.addSpacing(10)
+
         # --- STEP 1: Username Input ---
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter Username")
         self.frame_layout.addWidget(self.username_input)
 
-        self.send_otp_btn = QPushButton("📨 Send OTP")
+        self.send_otp_btn = QPushButton("Send OTP")
+        self.send_otp_btn.setObjectName("AuthOrangeButton")
         self.send_otp_btn.clicked.connect(self.handle_send_otp)
         self.frame_layout.addWidget(self.send_otp_btn)
 
@@ -40,13 +48,14 @@ class ForgotPasswordWindow(AuthStyle):
         self.new_password_input.hide()
         self.frame_layout.addWidget(self.new_password_input)
 
-        self.reset_btn = QPushButton("🔐 Reset Password")
+        self.reset_btn = QPushButton("Reset Password")
+        self.reset_btn.setObjectName("AuthPrimaryButton")
         self.reset_btn.clicked.connect(self.handle_reset_password)
         self.reset_btn.hide()
         self.frame_layout.addWidget(self.reset_btn)
 
         # Back Button
-        self.back_btn = QPushButton("⬅️ Back to Login")
+        self.back_btn = QPushButton("Back to Login")
         self.back_btn.setObjectName("LinkButton")
         self.back_btn.clicked.connect(self.switch_to_login.emit)
         self.frame_layout.addWidget(self.back_btn)

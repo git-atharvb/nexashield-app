@@ -11,7 +11,7 @@ import datetime
 import subprocess
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QMenu, QApplication,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGroupBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QGroupBox, QToolTip,
     QLineEdit, QComboBox, QPushButton, QFileDialog, QMessageBox, QDialog, QFormLayout, QCheckBox, QTextEdit
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QThread, pyqtSignal
@@ -60,6 +60,7 @@ class ThreatDonutChart(QWidget):
         super().__init__()
         self.setMinimumSize(150, 150)
         self.stats = {"Safe": 0, "Warning": 0, "Critical": 0}
+        self.setMouseTracking(True)
 
     def update_stats(self, stats):
         self.stats = stats
@@ -80,25 +81,69 @@ class ThreatDonutChart(QWidget):
         top_pad = 10
         size = min(w, h - top_pad) - 20
         rect = QRectF((w - size) / 2, top_pad + 10, size, size)
+        
+        # Subtle Drop Shadow Effect for whole pie area
+        shadow_rect = rect.translated(0, 4)
+        painter.setBrush(QColor(0, 0, 0, 40))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(shadow_rect)
+        
         start_angle = 90 * 16
         
         for label, count in self.stats.items():
             if count > 0:
                 span = int((count / total) * 360 * 16)
-                painter.setBrush(QColor(colors.get(label, "#888")))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawPie(rect, start_angle, span)
+                
+                # Draw main slice with rounded caps
+                pen = QPen(QColor(colors.get(label, "#888")), 14, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                painter.setPen(pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                
+                # Adjust rect to account for pen width
+                arc_rect = rect.adjusted(7, 7, -7, -7)
+                painter.drawArc(arc_rect, start_angle, span)
+                
                 start_angle += span
                 
-        painter.setBrush(self.palette().color(QPalette.ColorRole.Window))
-        inner_size = size * 0.65
-        inner_rect = QRectF((w - inner_size) / 2, top_pad + 10 + (size - inner_size) / 2, inner_size, inner_size)
-        painter.drawEllipse(inner_rect)
-        
         text_col = self.palette().color(QPalette.ColorRole.WindowText)
         painter.setPen(text_col)
         painter.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        painter.drawText(inner_rect, Qt.AlignmentFlag.AlignCenter, f"Total\n{total}")
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"Total\n{total}")
+
+    def mouseMoveEvent(self, event):
+        total = sum(self.stats.values())
+        if total == 0: return super().mouseMoveEvent(event)
+            
+        pos = event.pos()
+        w, h = self.width(), self.height()
+        top_pad = 10
+        size = min(w, h - top_pad) - 20
+        rect = QRectF((w - size) / 2, top_pad + 10, size, size)
+        
+        center = rect.center()
+        dx = pos.x() - center.x()
+        dy = pos.y() - center.y()
+        distance = math.hypot(dx, dy)
+        
+        inner_radius = (size / 2) - 14
+        outer_radius = (size / 2) + 7
+        
+        if inner_radius <= distance <= outer_radius:
+            angle = math.degrees(math.atan2(-dy, dx))
+            if angle < 0: angle += 360
+            mapped_angle = (angle - 90) % 360
+            
+            current_span = 0
+            for label, count in self.stats.items():
+                if count > 0:
+                    span = (count / total) * 360
+                    if current_span <= mapped_angle <= current_span + span:
+                        QToolTip.showText(event.globalPosition().toPoint(), f"{label}\nEvents: {count}\nShare: {(count/total)*100:.1f}%", self)
+                        return
+                    current_span += span
+                    
+        QToolTip.hideText()
+        super().mouseMoveEvent(event)
 
 class EventInspectorDialog(QDialog):
     def __init__(self, parent, db_info, basic_info):
@@ -247,7 +292,7 @@ class OverviewWorker(QThread):
         self.data_fetched.emit(data)
 
 class OverviewBarChart(QWidget):
-    """Draws a real-time bar chart (histogram) for resource visualization."""
+    """Draws a real-time smooth area chart for telemetry visualization."""
     def __init__(self, title, color="#28a745"):
         super().__init__()
         self.title = title
@@ -284,30 +329,68 @@ class OverviewBarChart(QWidget):
             y_line = top_pad + i * (chart_h / 2)
             painter.drawLine(10, int(y_line), w - 10, int(y_line))
             
-        # Draw Bars (Histogram)
-        bar_w = (w - 20) / len(self.data)
+        # Draw Smooth Area Chart
+        if not self.data: return
         
-        for i, val in enumerate(self.data):
-            if val <= 0: continue
-            x = 10 + i * bar_w
-            bar_h = (val / 100.0) * chart_h
-            y = h - 10 - bar_h
+        path = QPainterPath()
+        step_x = (w - 20) / (len(self.data) - 1)
+        
+        # Start at bottom left
+        path.moveTo(10, h - 10)
+        
+        # First point
+        first_y = h - 10 - (self.data[0] / 100.0) * chart_h
+        path.lineTo(10, first_y)
+        
+        for i in range(1, len(self.data)):
+            x = 10 + i * step_x
+            y = h - 10 - (self.data[i] / 100.0) * chart_h
             
-            rect = QRectF(x + 1, y, max(1, bar_w - 2), bar_h)
+            # Smooth cubic bezier curve
+            prev_x = 10 + (i - 1) * step_x
+            prev_y = h - 10 - (self.data[i-1] / 100.0) * chart_h
             
-            # Gradient for bar
-            grad = QLinearGradient(0, y, 0, h - 10)
-            c = self.primary_color
-            grad.setColorAt(0, c)
-            grad.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 30))
+            cp1_x = prev_x + (x - prev_x) / 2
+            cp1_y = prev_y
+            cp2_x = cp1_x
+            cp2_y = y
             
-            painter.setBrush(grad)
-            painter.setPen(Qt.PenStyle.NoPen)
+            path.cubicTo(cp1_x, cp1_y, cp2_x, cp2_y, x, y)
             
-            # Draw rounded rect for the bar
-            path = QPainterPath()
-            path.addRoundedRect(rect, 3, 3)
-            painter.drawPath(path)
+        # Complete path back to bottom right
+        path.lineTo(w - 10, h - 10)
+        path.closeSubpath()
+        
+        # Gradient Fill
+        grad = QLinearGradient(0, top_pad, 0, h - 10)
+        c = self.primary_color
+        grad.setColorAt(0, QColor(c.red(), c.green(), c.blue(), 120))
+        grad.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 10))
+        
+        painter.setBrush(grad)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawPath(path)
+        
+        # Draw top glow line (stroke only)
+        stroke_path = QPainterPath()
+        stroke_path.moveTo(10, first_y)
+        for i in range(1, len(self.data)):
+            x = 10 + i * step_x
+            y = h - 10 - (self.data[i] / 100.0) * chart_h
+            prev_x = 10 + (i - 1) * step_x
+            prev_y = h - 10 - (self.data[i-1] / 100.0) * chart_h
+            cp1_x = prev_x + (x - prev_x) / 2
+            cp1_y = prev_y
+            cp2_x = cp1_x
+            cp2_y = y
+            stroke_path.cubicTo(cp1_x, cp1_y, cp2_x, cp2_y, x, y)
+            
+        pen = QPen(self.primary_color, 2.5)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(stroke_path)
 
 class OverviewWidget(QWidget):
     def __init__(self):
@@ -376,7 +459,8 @@ class OverviewWidget(QWidget):
         health_layout.addSpacing(10)
         
         self.lbl_score = QLabel("🏆 Security Score: Calculating...")
-        self.lbl_score.setStyleSheet("font-size: 18px; font-weight: bold; color: #0078d7; background: transparent;")
+        self.lbl_score.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_score.setStyleSheet("font-size: 24px; font-weight: 800; color: #0078d7; background: transparent; margin-top: 10px; margin-bottom: 5px;")
         health_layout.addWidget(self.lbl_score)
         
         donut_layout = QHBoxLayout()
@@ -384,6 +468,7 @@ class OverviewWidget(QWidget):
         donut_layout.addWidget(self.threat_donut)
         health_layout.addLayout(donut_layout)
         
+        health_layout.addSpacing(15)
         self.lbl_cpu_stat = self.create_dynamic_status_row(health_layout, "🧠 CPU Thermals & Load")
         self.lbl_ram_stat = self.create_dynamic_status_row(health_layout, "💾 Memory Integrity")
         self.lbl_disk_stat = self.create_dynamic_status_row(health_layout, "💽 Disk Health (S.M.A.R.T)")
@@ -445,9 +530,31 @@ class OverviewWidget(QWidget):
         self.alerts_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.alerts_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.alerts_table.verticalHeader().setVisible(False)
-        self.alerts_table.setAlternatingRowColors(True)
         self.alerts_table.setShowGrid(False)
-        self.alerts_table.setStyleSheet("border: none; background: transparent;")
+        
+        # Premium Styling
+        self.alerts_table.setStyleSheet("""
+            QTableWidget {
+                border: none;
+                background: transparent;
+                alternate-background-color: #2a2a2a;
+            }
+            QTableWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid #333333;
+            }
+            QHeaderView::section {
+                background-color: #1e1e1e;
+                color: #aaa;
+                font-weight: bold;
+                border: none;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #333;
+            }
+        """)
+        self.alerts_table.setAlternatingRowColors(True)
+        self.alerts_table.verticalHeader().setDefaultSectionSize(45)
+        
         self.alerts_table.itemDoubleClicked.connect(self.show_event_details)
         self.alerts_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.alerts_table.customContextMenuRequested.connect(self.show_context_menu)
@@ -461,21 +568,21 @@ class OverviewWidget(QWidget):
         row = QWidget()
         row.setStyleSheet("background: transparent;")
         l = QHBoxLayout(row)
-        l.setContentsMargins(0, 8, 0, 8)
+        l.setContentsMargins(5, 12, 5, 12)
         
         lbl_name = QLabel(name)
-        lbl_name.setStyleSheet("background: transparent;")
+        lbl_name.setStyleSheet("background: transparent; font-size: 13px;")
         l.addWidget(lbl_name)
         l.addStretch()
         
         stat_lbl = QLabel("Checking...")
-        stat_lbl.setStyleSheet("font-weight: bold; background: transparent;")
+        stat_lbl.setStyleSheet("font-weight: bold; background: transparent; font-size: 13px; padding: 4px 10px; border-radius: 4px;")
         l.addWidget(stat_lbl)
         layout.addWidget(row)
         
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: #88888830;")
+        sep.setStyleSheet("background-color: #88888820; margin-left: 5px; margin-right: 5px;")
         layout.addWidget(sep)
         
         return stat_lbl
@@ -513,10 +620,10 @@ class OverviewWidget(QWidget):
         def set_stat(lbl, val, threshold):
             if val < threshold:
                 lbl.setText("Good")
-                lbl.setStyleSheet("color: #28a745; font-weight: bold;")
+                lbl.setStyleSheet("color: #28a745; font-weight: bold; background: rgba(40, 167, 69, 0.1); padding: 4px 10px; border-radius: 4px;")
             else:
                 lbl.setText("Warning")
-                lbl.setStyleSheet("color: #dc3545; font-weight: bold;")
+                lbl.setStyleSheet("color: #dc3545; font-weight: bold; background: rgba(220, 53, 69, 0.1); padding: 4px 10px; border-radius: 4px;")
                 
         set_stat(self.lbl_cpu_stat, data['cpu'], 85)
         set_stat(self.lbl_ram_stat, data['ram'], 85)
@@ -524,10 +631,10 @@ class OverviewWidget(QWidget):
         
         if data['net_up']:
             self.lbl_net_stat.setText("Connected")
-            self.lbl_net_stat.setStyleSheet("color: #28a745; font-weight: bold;")
+            self.lbl_net_stat.setStyleSheet("color: #28a745; font-weight: bold; background: rgba(40, 167, 69, 0.1); padding: 4px 10px; border-radius: 4px;")
         else:
             self.lbl_net_stat.setText("Disconnected")
-            self.lbl_net_stat.setStyleSheet("color: #dc3545; font-weight: bold;")
+            self.lbl_net_stat.setStyleSheet("color: #dc3545; font-weight: bold; background: rgba(220, 53, 69, 0.1); padding: 4px 10px; border-radius: 4px;")
             
         if 'events' in data:
             events = data['events']
@@ -576,12 +683,16 @@ class OverviewWidget(QWidget):
                     self.alerts_table.setItem(i, 2, QTableWidgetItem(desc))
                     
                     sev_item = QTableWidgetItem(sev)
+                    sev_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    font = sev_item.font()
+                    font.setBold(True)
+                    sev_item.setFont(font)
                     if sev in ["High", "Critical", "High Risk"]:
-                        sev_item.setForeground(QBrush(QColor("#dc3545")))
+                        sev_item.setForeground(QBrush(QColor("#ff4d4d")))
                     elif sev in ["Medium", "Medium Risk", "Warning"]:
-                        sev_item.setForeground(QBrush(QColor("#ffc107")))
+                        sev_item.setForeground(QBrush(QColor("#ffcc00")))
                     elif sev in ["Safe", "Low Risk"]:
-                        sev_item.setForeground(QBrush(QColor("#28a745")))
+                        sev_item.setForeground(QBrush(QColor("#00cc66")))
                     
                     self.alerts_table.setItem(i, 3, sev_item)
                 self.threat_donut.update_stats(stats)
